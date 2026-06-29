@@ -19,6 +19,4 @@ async def availability(_: None = Depends(enforce_widget_guard)) -> AvailabilityR
     days = await cal_service.get_available_slots(
         event_type_id=config.RR_CAL_EVENT_TYPE_ID, api_key=api_key, timezone=tz
     )
-    return AvailabilityResponse(
-        timezone=tz, days=[AvailabilityDay(**d) for d in days]
-    )
+    return AvailabilityResponse(timezone=tz, days=[AvailabilityDay(**d) for d in days])
