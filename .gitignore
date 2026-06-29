@@ -1,6 +1,10 @@
 .DS_Store
 docs/superpowers
+docs/refinery
 
+scripts/gate.sh
+Taskfile.yml
+.claude
 # Root env (copy .env.example -> .env)
 .env
 .env.local

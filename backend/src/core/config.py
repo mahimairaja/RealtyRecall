@@ -88,6 +88,13 @@ class Config(BaseSettings):
     # CORS: comma-separated origins. Empty means allow all ("*").
     CORS_ORIGINS_STR: str | None = ""
 
+    # Widget guard for the public token endpoint. WIDGET_ALLOWED_ORIGINS_STR is a
+    # comma-separated allowlist; empty means the guard does NOT enforce by Origin (dev),
+    # which is NOT the same as CORS "*". See the WIDGET_ALLOWED_ORIGINS property.
+    WIDGET_ALLOWED_ORIGINS_STR: str | None = ""
+    WIDGET_TOKEN_RATELIMIT_PER_MIN: int = 20
+    WIDGET_TOKEN_TTL_SECONDS: int = 300
+
     # Database
     DATABASE_URL: str | None = None
     DB_USER: str | None = None
@@ -161,6 +168,17 @@ class Config(BaseSettings):
             o.strip() for o in (self.CORS_ORIGINS_STR or "").split(",") if o.strip()
         ]
         return origins or ["*"]
+
+    @property
+    def WIDGET_ALLOWED_ORIGINS(self) -> list[str]:
+        # Empty means the widget guard does not enforce by Origin (dev). Unlike
+        # BACKEND_CORS_ORIGINS, an empty list here does NOT become "*". Blank/whitespace
+        # entries are dropped so a malformed value never yields a bogus empty origin.
+        return [
+            o.strip()
+            for o in (self.WIDGET_ALLOWED_ORIGINS_STR or "").split(",")
+            if o.strip()
+        ]
 
     JWT_SECRET_KEY: SecretStr = SecretStr(_PLACEHOLDER_JWT_SECRET)
     JWT_ALGORITHM: str = "HS256"
