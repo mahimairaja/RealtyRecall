@@ -1,4 +1,5 @@
 import uuid
+from datetime import timedelta
 
 from google.protobuf.json_format import ParseDict
 from livekit import api
@@ -43,6 +44,7 @@ class TokenService:
         token = (
             api.AccessToken(key, secret)
             .with_identity(identity)
+            .with_ttl(timedelta(seconds=self._config.WIDGET_TOKEN_TTL_SECONDS))
             .with_name(payload.participant_name or identity)
             .with_grants(
                 api.VideoGrants(

@@ -13,7 +13,7 @@ class Config(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore", case_sensitive=True)
 
     # Identity. AGENT_NAME is also the dispatch name the frontend must request.
-    AGENT_NAME: str = "assistant"
+    AGENT_NAME: str = "realty"
     ENV: str = "prod"
     PROJECT_NAME: str = "Voice Agent"
 
