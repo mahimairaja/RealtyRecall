@@ -1,128 +1,66 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.webp">
-  <source media="(prefers-color-scheme: light)" srcset="assets/banner-light.webp">
-  <img src="assets/banner-light.webp" alt="LiveKit Voice AI Starter" width="100%" />
-</picture>
+<p align="center">
+  <img src="assets/banner.png" alt="RealtyRecall" width="100%" />
+</p>
 
-<h1 align="center">LiveKit Voice AI Starter</h1>
+<h1 align="center">RealtyRecall</h1>
 
 <p align="center">
-  <b>Talk to an AI agent in your browser, in minutes.</b><br/>
-  A full-stack, production-minded starter for real-time voice agents: a LiveKit
-  voice worker, a FastAPI token server, and a React frontend built on LiveKit's
-  Agents UI, wired together and ready to extend.
+  <b>The always-on voice assistant for solo real estate agents that never forgets a buyer.</b>
 </p>
 
 <p align="center">
-  <!--<a href="https://your-demo-url"><img src="assets/badges/live-demo.svg" alt="Live Demo" height="30"></a>-->
-  <a href="https://livekit.io"><img src="assets/badges/livekit.svg" alt="LiveKit" height="30"></a>
-  <img src="assets/badges/voice-first.svg" alt="Voice First" height="30">
-  <a href="https://www.python.org"><img src="assets/badges/python.svg" alt="Python" height="30"></a>
-  <a href="https://fastapi.tiangolo.com"><img src="assets/badges/fastapi.svg" alt="FastAPI" height="30"></a>
-  <a href="https://react.dev"><img src="assets/badges/react.svg" alt="React" height="30"></a>
-  <a href="https://www.typescriptlang.org"><img src="assets/badges/typescript.svg" alt="TypeScript" height="30"></a>
-  <a href="https://tailwindcss.com"><img src="assets/badges/tailwind.svg" alt="Tailwind CSS" height="30"></a>
-</p>
-
-<p align="center">
-  <a href="LICENSE"><img src="assets/badges/license-mit.svg" alt="MIT License" height="30"></a>
-  <a href="../../issues"><img src="assets/badges/prs-welcome.svg" alt="PRs welcome" height="30"></a>
+  <img src="https://img.shields.io/badge/HangOver-Cognee_Hackathon-1f96aa" alt="Cognee Hackathon" />
+  <img src="https://img.shields.io/badge/voice-LiveKit-1fb6c9" alt="LiveKit" />
+  <img src="https://img.shields.io/badge/memory-Cognee-7c4dff" alt="Cognee" />
+  <img src="https://img.shields.io/badge/python-3.11+-3776AB" alt="Python" />
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT" />
+  <img src="https://img.shields.io/badge/%23buildinpublic-day_1-ff6b35" alt="Build in public" />
 </p>
 
 ---
 
-Most voice-AI demos are a single script. This is the whole loop, structured the
-way you'd actually ship it, and split into three pieces you can run, deploy, and
-swap independently.
+RealtyRecall answers every call in your name, qualifies the buyer, books the showing, and remembers every buyer and every listing across calls. Connect your listings in minutes, then let it carry the context no answering service can: a returning buyer is greeted by name and picks up exactly where they left off, and it gets sharper with every conversation.
 
-## What's inside
+Built for solo agents who lose leads to missed calls, and who are tired of receptionist bots that forget the caller the second they hang up.
 
-| Package         | What it is                                                                                                                                                                  |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`agent/`**    | A LiveKit voice worker: Deepgram `nova-3` STT, OpenAI `gpt-4.1-mini`, Cartesia TTS, Silero VAD, and the LiveKit multilingual turn detector. Web and SIP, explicit dispatch. |
-| **`backend/`**  | A FastAPI service that mints LiveKit room tokens (`POST /api/v1/token`), with a clean API → service → repository layout you copy to add resources.                          |
-| **`frontend/`** | React + Vite + Tailwind using LiveKit's Agents UI components: audio visualizer, live transcript, and text chat.                                                             |
+> Built in public for The Hangover Part AI, the Cognee memory hackathon (Jun 29 to Jul 5, 2026). Live at [hangover.mahimai.ca](https://hangover.mahimai.ca).
 
-Typed end to end, tested, linted, with CI and a pre-commit hook across all three.
+## How it works
 
-## How it fits together
+1. Connect listings. Paste your listings page or upload a file. RealtyRecall reads your homes into a memory graph in under a minute.
+2. Buyer calls. The assistant answers around the clock, qualifies budget, timeline, financing, and area, and recalls the homes that match.
+3. Books the showing. On your calendar, then texts you the lead.
+4. Never forgets. Every buyer and listing lives in a knowledge graph, so memory carries across calls and improves over time.
 
-```
-  React app  ──POST /api/v1/token──▶  Backend  ──signs token──▶  React joins room
-      │                                                               │
-      └───────────────── connects to LiveKit room ◀──────────────────┘
-                                   │
-                  agent_name dispatches  ──▶  Agent worker joins
-                                   │
-                         mic ▶ STT ▶ LLM ▶ TTS ▶ speaker  (over WebRTC)
-```
+## Why memory changes everything
 
-The backend and agent share the same LiveKit credentials, so a backend-minted
-token is valid for the room the agent joins. Works against self-hosted LiveKit
-or LiveKit Cloud.
+Most AI receptionists are stateless: they forget the caller the moment the line drops. RealtyRecall runs on a hybrid graph and vector memory powered by [Cognee](https://github.com/topoteretes/cognee) (self-hosted, open source). Four operations run the whole product:
 
-## Run with Docker
+- remember: ingest the realtor's listings and each buyer
+- recall: match a buyer to the right homes, across sessions
+- improve: sharpen the memory after every call
+- forget: remove a buyer on request
 
-The fastest path. One command brings up Postgres, the backend, the agent, and the
-frontend together:
+## Topics
 
-```bash
-cp .env.example .env     # fill in LIVEKIT_* + OPENAI/DEEPGRAM/CARTESIA
-docker compose up --build
-```
-
-Open `http://localhost:5173` and click **Start conversation**. Uses an external
-LiveKit project (a free LiveKit Cloud project works). The voice demo needs no
-database; for the auth/User endpoints, run once:
-`docker compose exec backend alembic upgrade head`.
-
-## Run manually
-
-You'll need a LiveKit project (URL + API key/secret) and provider keys
-(OpenAI, Deepgram, Cartesia). Run each in its own terminal:
-
-```bash
-# 1. Backend: token server (http://localhost:8000)
-cd backend && cp .env.example .env   # add LIVEKIT_* + JWT_SECRET_KEY
-uv sync && uv run uvicorn src.main:app --reload
-
-# 2. Agent: voice worker
-cd agent && cp .env.example .env      # add LIVEKIT_*, OPENAI/DEEPGRAM/CARTESIA keys
-uv sync && uv run python main.py dev
-
-# 3. Frontend: web client (http://localhost:5173)
-cd frontend && cp .env.example .env   # point VITE_TOKEN_ENDPOINT at the backend
-pnpm install && pnpm dev
-```
-
-Open `http://localhost:5173`, click **Start conversation**, allow the mic, and talk.
-
-> No frontend yet? Talk to the agent from your terminal with
-> `cd agent && uv run python main.py console`.
+- The problem: missed calls and amnesiac receptionists
+- The two magic moments: instant listing onboarding, and memory across calls
+- Architecture: the voice loop and the memory layer
+- The memory model: realtor, listing, neighbourhood, buyer, showing
+- Legal data posture: your own listings with consent (official feeds later)
+- Quickstart: run it locally
+- Demo: hear it answer real listings
+- Roadmap: phone numbers, official listing feeds, more verticals
+- Build log: daily updates on LinkedIn and X
 
 ## Stack
 
-| Layer           | Default                                                                       |
-| --------------- | ----------------------------------------------------------------------------- |
-| STT / LLM / TTS | Deepgram `nova-3` · OpenAI `gpt-4.1-mini` · Cartesia (all swappable)          |
-| Realtime        | LiveKit Agents (`livekit-agents`), WebRTC, Silero VAD, turn detector          |
-| Backend         | FastAPI, async SQLModel/Postgres, dependency-injector, PyJWT, `livekit-api`   |
-| Frontend        | React 19, Vite, TypeScript, Tailwind v4, shadcn + LiveKit Agents UI           |
-| Tooling         | uv, ruff, mypy, pytest · ESLint, Vitest · pre-commit, GitHub Actions, Codecov |
+Voice: LiveKit Agents, Deepgram, OpenAI, Cartesia. Memory: Cognee. Backend: FastAPI. Frontend: React. Booking: cal.com. Texts: Telnyx.
 
-## Highlights
+## Status
 
-- **One command per service** to run locally; one `.env.example` each.
-- **Web and telephony** (SIP) on the same agent, via a single participant branch.
-- **Swappable providers** and self-hosted ↔ LiveKit Cloud with a one-line change.
-- **Standard token endpoint** so LiveKit client SDKs connect with zero glue.
-- **Copy-to-extend** patterns: a `User` slice in the backend, a bare `Assistant` in the agent.
-
-## Docs
-
-Each package has its own README with details:
-[`agent/`](agent/README.md) · [`backend/`](backend/README.md) · [`frontend/`](frontend/README.md)
+Work in progress, day 1 of 7. Watch this repo, or follow the build on [LinkedIn](https://www.linkedin.com/in/mahimairaja/) and [X](https://x.com/mahimaidev).
 
 ## License
 
-MIT. See [`LICENSE`](LICENSE).
+MIT. See [LICENSE](LICENSE).
