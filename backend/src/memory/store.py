@@ -13,6 +13,7 @@ import os
 import re
 from typing import Any
 
+import asyncpg
 import cognee
 from cognee import SearchType
 from cognee.modules.engine.operations.setup import setup as cognee_setup
@@ -30,8 +31,39 @@ def _pg_url() -> str:
     password = os.getenv("DB_PASSWORD", "postgres")
     host = os.getenv("DB_HOST", "localhost")
     port = os.getenv("DB_PORT", "5432")
-    name = os.getenv("DB_NAME", "app")
+    name = os.getenv("COGNEE_DB_NAME", "cognee_db")
     return f"postgresql://{user}:{password}@{host}:{port}/{name}"
+
+
+async def _ensure_cognee_db() -> None:
+    """Create the dedicated Cognee database and the pgvector extension if missing.
+
+    Cognee is isolated in its own database so its tables (it creates a 'users' table for
+    access control, among others) never collide with the operational schema.
+    """
+    name = os.getenv("COGNEE_DB_NAME", "cognee_db")
+    user = os.getenv("DB_USERNAME") or os.getenv("DB_USER") or "postgres"
+    password = os.getenv("DB_PASSWORD", "postgres")
+    host = os.getenv("DB_HOST", "localhost")
+    port = int(os.getenv("DB_PORT", "5432"))
+    admin = await asyncpg.connect(
+        user=user, password=password, host=host, port=port, database="postgres"
+    )
+    try:
+        exists = await admin.fetchval(
+            "SELECT 1 FROM pg_database WHERE datname = $1", name
+        )
+        if not exists:
+            await admin.execute(f'CREATE DATABASE "{name}"')
+    finally:
+        await admin.close()
+    db = await asyncpg.connect(
+        user=user, password=password, host=host, port=port, database=name
+    )
+    try:
+        await db.execute("CREATE EXTENSION IF NOT EXISTS vector")
+    finally:
+        await db.close()
 
 
 def configure_cognee() -> None:
@@ -77,7 +109,7 @@ def configure_cognee() -> None:
         cognee.config.set_relational_db_config(
             {
                 "db_provider": "postgres",
-                "db_name": os.getenv("DB_NAME", "app"),
+                "db_name": os.getenv("COGNEE_DB_NAME", "cognee_db"),
                 "db_host": os.getenv("DB_HOST", "localhost"),
                 "db_port": os.getenv("DB_PORT", "5432"),
                 "db_username": os.getenv("DB_USERNAME")
@@ -97,6 +129,7 @@ async def ensure_cognee() -> None:
     global _setup_done
     configure_cognee()
     if not _setup_done:
+        await _ensure_cognee_db()
         await cognee_setup()
         _setup_done = True
 
