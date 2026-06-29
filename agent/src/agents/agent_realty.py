@@ -171,11 +171,22 @@ class RealtyAgent(Agent):
         return "That time did not work out. Want me to check other times?"
 
     @function_tool
-    async def forget_me(self, context: RunContext, phone: str) -> str:
-        """Remove everything we remember about this buyer, at their request, and confirm."""
+    async def forget_me(self, context: RunContext) -> str:
+        """Forget everything we remember about THIS caller, at their request, and confirm.
+
+        The phone is derived from the verified caller context (the number captured this
+        call), never accepted as an argument, so a caller can only ever forget themselves.
+        """
+        phone = self.last_phone
+        if not phone:
+            return (
+                "Could you share the phone number on your account so I can remove your "
+                "information?"
+            )
         try:
             await self._api.forget_buyer(phone)
         except Exception as exc:  # noqa: BLE001
             logger.warning("forget_me failed: %s", exc)
             return "I was not able to do that just now."
+        self.last_phone = None
         return "Done. I have removed your information."

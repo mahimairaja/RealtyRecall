@@ -31,6 +31,10 @@ async def get_buyer(
     return BuyerRecall(**result)
 
 
+# Destructive. M0 is single-realtor with no sign-in, so there is no other tenant whose buyer
+# could be deleted, and the agent only ever calls this with its verified caller phone
+# (forget_me derives it, never an argument). Widget-guarded. POST-M0: require proof of
+# possession of the phone (an OTP / signed token) before deletion.
 @router.delete("/{phone}")
 async def forget_buyer(
     phone: str,

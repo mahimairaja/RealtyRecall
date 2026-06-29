@@ -12,6 +12,11 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/calls", tags=["calls"])
 
 
+# M0 is single-realtor with no sign-in, so there is no other tenant whose room/buyer this
+# could cross, and the agent posts buyer_phone = its verified caller phone. Widget-guarded.
+# POST-M0: validate a server-issued room token (the agent for `room`) and resolve buyer_phone
+# from the call's authoritative record rather than the body, so improve() cannot be aimed at
+# another buyer's memory.
 @router.post("/{room}/close", response_model=CallCloseResponse)
 async def close_call(
     room: str,
