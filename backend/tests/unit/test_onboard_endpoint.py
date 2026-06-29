@@ -4,6 +4,7 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
+import src.core.widget_guard as widget_guard
 import src.services.onboard_service as onboard_service
 from src.api.endpoints.listings import router as listings_router
 from src.api.endpoints.onboard import router as onboard_router
@@ -12,10 +13,12 @@ FIXTURES = Path(__file__).parent.parent / "fixtures"
 
 
 @pytest.fixture(autouse=True)
-def _reset_staging():
+def _reset_state():
     onboard_service.get_staging_store().clear()
+    widget_guard._limiter = None
     yield
     onboard_service.get_staging_store().clear()
+    widget_guard._limiter = None
 
 
 def _client() -> AsyncClient:
