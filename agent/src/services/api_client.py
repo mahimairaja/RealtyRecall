@@ -7,6 +7,8 @@ httpx.MockTransport (no network).
 
 from __future__ import annotations
 
+from typing import Any
+
 import httpx
 
 from src.core.config import config
@@ -21,13 +23,35 @@ class BackendApiClient:
         self._base_url = (base_url or config.BACKEND_URL).rstrip("/")
         self._transport = transport
 
+    async def _post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
+        async with httpx.AsyncClient(timeout=20.0, transport=self._transport) as client:
+            resp = await client.post(f"{self._base_url}{path}", json=body)
+            resp.raise_for_status()
+            data: dict[str, Any] = resp.json()
+        return data
+
+    async def _get(self, path: str) -> dict[str, Any]:
+        async with httpx.AsyncClient(timeout=20.0, transport=self._transport) as client:
+            resp = await client.get(f"{self._base_url}{path}")
+            resp.raise_for_status()
+            data: dict[str, Any] = resp.json()
+        return data
+
     async def recall(self, realtor: str, criteria: str) -> str:
         """Ask the backend to recall matching listings; return the grounded answer."""
-        async with httpx.AsyncClient(timeout=20.0, transport=self._transport) as client:
-            resp = await client.post(
-                f"{self._base_url}/api/v1/recall",
-                json={"realtor": realtor, "criteria": criteria},
-            )
-            resp.raise_for_status()
-            data = resp.json()
+        data = await self._post(
+            "/api/v1/recall", {"realtor": realtor, "criteria": criteria}
+        )
         return str(data.get("answer", ""))
+
+    async def capture_lead(self, buyer: dict[str, Any]) -> dict[str, Any]:
+        """Upsert a buyer keyed by phone."""
+        return await self._post("/api/v1/buyers", buyer)
+
+    async def check_availability(self) -> dict[str, Any]:
+        """Open showing times on the realtor's calendar."""
+        return await self._get("/api/v1/availability")
+
+    async def book_showing(self, booking: dict[str, Any]) -> dict[str, Any]:
+        """Book an in-person showing (idempotent by idempotency_key)."""
+        return await self._post("/api/v1/bookings", booking)

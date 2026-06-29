@@ -1,5 +1,8 @@
 from fastapi import APIRouter
 
+from src.api.endpoints.availability import router as availability_router
+from src.api.endpoints.bookings import router as bookings_router
+from src.api.endpoints.buyers import router as buyers_router
 from src.api.endpoints.listings import router as listings_router
 from src.api.endpoints.onboard import router as onboard_router
 from src.api.endpoints.recall import router as recall_router
@@ -12,3 +15,6 @@ routers.include_router(token_router)
 routers.include_router(onboard_router)
 routers.include_router(listings_router)
 routers.include_router(recall_router)
+routers.include_router(buyers_router)
+routers.include_router(availability_router)
+routers.include_router(bookings_router)

@@ -19,7 +19,7 @@ from cognee import SearchType
 from cognee.modules.engine.operations.setup import setup as cognee_setup
 from cognee.tasks.storage import add_data_points
 
-from src.memory.models import Buyer, Listing, Neighbourhood, Realtor
+from src.memory.models import Buyer, Listing, Neighbourhood, Realtor, Showing
 
 LISTINGS_DATASET = "listings"
 _configured = False
@@ -209,11 +209,54 @@ class MemoryStore:
             criteria=buyer.get("criteria"),
         )
         await add_data_points([node])
-        # Keep a per-buyer dataset so forget_buyer removes exactly this buyer.
-        await cognee.add(
-            _buyer_to_text(buyer), dataset_name=buyer_dataset(buyer["phone"])
-        )
+        # Keep a per-buyer dataset (cognified so it is searchable) so forget_buyer removes
+        # exactly this buyer and get_buyer can recall them on a return call.
+        dataset = buyer_dataset(buyer["phone"])
+        await cognee.add(_buyer_to_text(buyer), dataset_name=dataset)
+        await cognee.cognify(datasets=[dataset])
         return buyer
+
+    async def get_buyer(self, phone: str) -> dict[str, Any]:
+        """Recall a returning buyer by phone: name, prior criteria, homes discussed.
+
+        Searches only the buyer's own dataset. Always returns a dict; found=False means a
+        new (or forgotten) buyer.
+        """
+        await ensure_cognee()
+        dataset = buyer_dataset(phone)
+        try:
+            results = await cognee.search(
+                query_text=(
+                    "Summarize this returning buyer: their name, their stated criteria "
+                    "(area, budget, bedrooms), and any homes they discussed."
+                ),
+                query_type=SearchType.GRAPH_COMPLETION,
+                datasets=[dataset],
+                top_k=5,
+            )
+        except Exception:  # noqa: BLE001  (unknown/forgotten buyer -> not found)
+            results = []
+        if not results:
+            return {"found": False, "phone": phone}
+        return {"found": True, "phone": phone, "summary": str(results[0])}
+
+    async def add_showing(
+        self,
+        *,
+        phone: str | None,
+        property_code: str | None,
+        address: str | None,
+        when_utc: str,
+    ) -> None:
+        """Record a booked showing: a Showing node plus a note folded into the buyer's
+        dataset so a later recall mentions it.
+        """
+        await ensure_cognee()
+        await add_data_points([Showing(when_utc=when_utc)])
+        dataset = buyer_dataset(phone) if phone else LISTINGS_DATASET
+        note = f"A showing is booked for {address or property_code} on {when_utc}"
+        note += f" for the buyer at {phone}." if phone else "."
+        await cognee.add(note, dataset_name=dataset)
 
     async def improve(self, dataset: str = LISTINGS_DATASET) -> None:
         await ensure_cognee()
