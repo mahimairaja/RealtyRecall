@@ -72,6 +72,10 @@ typeCheckingMode = "off"
 pythonpath = ["."]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+# Session-scoped loop so Cognee's process-wide async engine (bound to the first loop it
+# runs on) survives across multiple async integration tests.
+asyncio_default_test_loop_scope = "session"
+asyncio_default_fixture_loop_scope = "session"
 markers = [
   "integration: requires live external services (Cognee, Neo4j, pgvector, OpenAI)",
 ]
