@@ -19,7 +19,7 @@ from cognee import SearchType
 from cognee.modules.engine.operations.setup import setup as cognee_setup
 from cognee.tasks.storage import add_data_points
 
-from src.memory.models import Buyer, Listing, Neighbourhood, Realtor
+from src.memory.models import Buyer, Listing, Neighbourhood, Realtor, Showing
 
 LISTINGS_DATASET = "listings"
 _configured = False
@@ -239,6 +239,24 @@ class MemoryStore:
         if not results:
             return {"found": False, "phone": phone}
         return {"found": True, "phone": phone, "summary": str(results[0])}
+
+    async def add_showing(
+        self,
+        *,
+        phone: str | None,
+        property_code: str | None,
+        address: str | None,
+        when_utc: str,
+    ) -> None:
+        """Record a booked showing: a Showing node plus a note folded into the buyer's
+        dataset so a later recall mentions it.
+        """
+        await ensure_cognee()
+        await add_data_points([Showing(when_utc=when_utc)])
+        dataset = buyer_dataset(phone) if phone else LISTINGS_DATASET
+        note = f"A showing is booked for {address or property_code} on {when_utc}"
+        note += f" for the buyer at {phone}." if phone else "."
+        await cognee.add(note, dataset_name=dataset)
 
     async def improve(self, dataset: str = LISTINGS_DATASET) -> None:
         await ensure_cognee()
