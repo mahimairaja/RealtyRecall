@@ -48,7 +48,10 @@ USER appuser
 EXPOSE 8080
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD exec gunicorn -k uvicorn.workers.UvicornWorker src.main:app \
+# Apply DB migrations before serving (idempotent). A failed migration blocks startup on
+# purpose, so we never serve the tenant-scoped API against a half-migrated schema. Runs once
+# per container start, before gunicorn forks its workers.
+CMD alembic upgrade head && exec gunicorn -k uvicorn.workers.UvicornWorker src.main:app \
     --bind "0.0.0.0:${PORT:-8080}" \
     --workers "${WEB_CONCURRENCY:-2}" \
     --timeout 0 \

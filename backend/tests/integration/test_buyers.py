@@ -8,13 +8,17 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from src.api.endpoints.buyers import router as buyers_router
+from src.core.tenant import get_agent_tenant_id
 
 pytestmark = pytest.mark.integration
+
+TENANT = "org_buyers_integration"
 
 
 async def test_upsert_then_recall_buyer():
     app = FastAPI()
     app.include_router(buyers_router, prefix="/api/v1")
+    app.dependency_overrides[get_agent_tenant_id] = lambda: TENANT
     phone = "+1-519-555-0177"
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"

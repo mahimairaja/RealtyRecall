@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 from src.core.config import config
 from src.core.tenant import tenant_from_room_name
 from src.core.widget_guard import enforce_widget_guard
-from src.memory.store import buyer_dataset, get_memory_store
+from src.memory.store import get_memory_store
 from src.repository import call_log_repository
 from src.schemas.call_schemas import CallClose, CallCloseResponse
 from src.services import sms_service
@@ -34,9 +34,11 @@ async def close_call(
     row = await call_log_repository.create(
         {"room_name": room, "tenant_id": tenant_id, **payload.model_dump()}
     )
-    if payload.buyer_phone:
+    if tenant_id and payload.buyer_phone:
         try:
-            await get_memory_store().improve(dataset=buyer_dataset(payload.buyer_phone))
+            await get_memory_store().improve(
+                tenant_id=tenant_id, phone=payload.buyer_phone
+            )
         except Exception as exc:  # noqa: BLE001
             logger.warning("improve on call close failed: %s", exc)
     await _maybe_send_lead_sms(payload)

@@ -10,14 +10,18 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from src.api.endpoints.recall import router as recall_router
+from src.core.tenant import get_agent_tenant_id
 from src.memory.store import get_memory_store
 
 pytestmark = pytest.mark.integration
+
+TENANT = "org_recall_integration"
 
 
 async def test_recall_surfaces_seeded_listing():
     tag = uuid.uuid4().hex[:8]
     await get_memory_store().add_listings(
+        TENANT,
         {"name": "Riley"},
         [
             {
@@ -33,6 +37,7 @@ async def test_recall_surfaces_seeded_listing():
     )
     app = FastAPI()
     app.include_router(recall_router, prefix="/api/v1")
+    app.dependency_overrides[get_agent_tenant_id] = lambda: TENANT
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as c:

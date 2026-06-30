@@ -11,16 +11,20 @@ from httpx import ASGITransport, AsyncClient
 
 import src.services.onboard_service as onboard_service
 from src.api.endpoints.onboard import router as onboard_router
+from src.core.clerk import get_current_tenant
 
 pytestmark = pytest.mark.integration
 
 FIXTURES = Path(__file__).parent.parent / "fixtures"
+
+TENANT = "org_onboard_integration"
 
 
 async def test_onboard_then_confirm_inserts_into_memory():
     onboard_service.get_staging_store().clear()
     app = FastAPI()
     app.include_router(onboard_router, prefix="/api/v1")
+    app.dependency_overrides[get_current_tenant] = lambda: TENANT
     csv_bytes = (FIXTURES / "listings.csv").read_bytes()
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"

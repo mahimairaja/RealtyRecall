@@ -40,6 +40,7 @@ def _to_dict(row: Booking) -> dict[str, Any]:
 
 async def book_showing(payload: dict[str, Any]) -> dict[str, Any]:
     key = payload["idempotency_key"]
+    tenant_id = tenant_from_room_name(payload.get("room_name"))
 
     existing = await booking_repository.get_by_idempotency_key(key)
     if existing is not None:
@@ -49,7 +50,7 @@ async def book_showing(payload: dict[str, Any]) -> dict[str, Any]:
         {
             "idempotency_key": key,
             "room_name": payload.get("room_name"),
-            "tenant_id": tenant_from_room_name(payload.get("room_name")),
+            "tenant_id": tenant_id,
             "property_code": payload.get("property_code"),
             "address": payload.get("address"),
             "start_utc": _parse_start(payload.get("start")),
@@ -85,8 +86,9 @@ async def book_showing(payload: dict[str, Any]) -> dict[str, Any]:
     updated = await booking_repository.set_result(
         row.id, cal_uid=cal["uid"], status=cal["status"], synced=cal["synced"]
     )
-    if cal["status"] == "accepted":
+    if cal["status"] == "accepted" and tenant_id:
         await get_memory_store().add_showing(
+            tenant_id=tenant_id,
             phone=payload.get("phone"),
             property_code=payload.get("property_code"),
             address=payload.get("address"),

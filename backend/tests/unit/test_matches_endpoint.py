@@ -1,29 +1,28 @@
-import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 import src.api.endpoints.matches as matches_mod
-import src.core.widget_guard as widget_guard
 import src.services.matching_service as matching_service
+from src.core.clerk import get_current_tenant
+
+TENANT = "org_matches_test"
 
 
 class _FakeStore:
-    async def match_buyers(self, listing: dict) -> str:
+    async def match_buyers(self, tenant_id: str, listing: dict) -> str:
         return "Pat is looking in Sarnia for 3 bedrooms; this home meets both."
 
 
-@pytest.fixture(autouse=True)
-def _reset_limiter():
-    widget_guard._limiter = None
-    yield
-    widget_guard._limiter = None
+def _app() -> FastAPI:
+    app = FastAPI()
+    app.include_router(matches_mod.router, prefix="/api/v1")
+    app.dependency_overrides[get_current_tenant] = lambda: TENANT
+    return app
 
 
 def _client(monkeypatch) -> AsyncClient:
     monkeypatch.setattr(matching_service, "get_memory_store", lambda: _FakeStore())
-    app = FastAPI()
-    app.include_router(matches_mod.router, prefix="/api/v1")
-    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+    return AsyncClient(transport=ASGITransport(app=_app()), base_url="http://test")
 
 
 async def test_matches_returns_summary(monkeypatch):
@@ -39,14 +38,12 @@ async def test_matches_returns_summary(monkeypatch):
 
 async def test_matches_empty_when_no_buyers(monkeypatch):
     class _Empty:
-        async def match_buyers(self, listing: dict) -> str:
+        async def match_buyers(self, tenant_id: str, listing: dict) -> str:
             return ""
 
     monkeypatch.setattr(matching_service, "get_memory_store", lambda: _Empty())
-    app = FastAPI()
-    app.include_router(matches_mod.router, prefix="/api/v1")
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
+        transport=ASGITransport(app=_app()), base_url="http://test"
     ) as c:
         resp = await c.post("/api/v1/matches", json={"area": "Nowhere"})
     assert resp.status_code == 200
