@@ -13,6 +13,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer
 
 from src.core.config import config
+from src.repository import tenant_repository
 
 logger = logging.getLogger(__name__)
 
@@ -66,3 +67,17 @@ async def get_tenant_id(
             detail="No active organization in the session; select or create one",
         )
     return str(org_id)
+
+
+async def get_current_tenant(
+    org_id: Annotated[str, Depends(get_tenant_id)],
+) -> str:
+    """Console dependency: the verified tenant id (Clerk org), upserting the Tenant row on
+    first use. Returns tenant_id == clerk_org_id == org_id.
+    """
+    await tenant_repository.upsert(org_id)
+    return org_id
+
+
+# Terse alias for console route signatures.
+CurrentTenant = Annotated[str, Depends(get_current_tenant)]

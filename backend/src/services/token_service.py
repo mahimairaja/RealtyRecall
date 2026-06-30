@@ -6,6 +6,7 @@ from livekit import api
 
 from src.core.config import Config
 from src.core.exceptions import create_service_unavailable_exception
+from src.core.tenant import room_name_for_tenant
 from src.schemas.token_schemas import RoomTokenRequest, RoomTokenResponse
 
 
@@ -38,7 +39,12 @@ class TokenService:
                 "and LIVEKIT_API_SECRET"
             )
 
-        room_name = payload.room_name or f"room-{uuid.uuid4().hex[:12]}"
+        # A tenant slug always wins: the room name encodes the tenant so the agent can
+        # recover it. Only the no-tenant (demo/dev) case honors a client room_name.
+        if payload.tenant:
+            room_name = room_name_for_tenant(payload.tenant)
+        else:
+            room_name = payload.room_name or f"room-{uuid.uuid4().hex[:12]}"
         identity = payload.participant_identity or f"user-{uuid.uuid4().hex[:12]}"
 
         token = (
