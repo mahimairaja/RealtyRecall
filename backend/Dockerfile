@@ -11,6 +11,12 @@ COPY --from=ghcr.io/astral-sh/uv:0.8 /uv /usr/local/bin/uv
 
 WORKDIR /app
 
+# Build deps for psycopg2 (pulled in by cognee[postgres]): it compiles from source
+# and needs pg_config + libpq headers, absent from the slim image.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential libpq-dev && \
+    rm -rf /var/lib/apt/lists/*
+
 # Install dependencies first (cached layer), without the project source
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-install-project --no-dev
@@ -27,9 +33,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH="/app" \
     PATH="/app/.venv/bin:$PATH"
 
-# tini for proper signal handling (tiny footprint)
+# tini for signals; libpq5 is the runtime lib psycopg2 links against.
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends tini && \
+    apt-get install -y --no-install-recommends tini libpq5 && \
     rm -rf /var/lib/apt/lists/*
 
 RUN useradd --create-home --shell /bin/bash appuser
