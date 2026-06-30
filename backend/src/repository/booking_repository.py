@@ -6,7 +6,7 @@ booking flow self-contained. Idempotency is enforced here via the unique idempot
 
 from __future__ import annotations
 
-from sqlmodel import select
+from sqlmodel import col, select
 
 from src.core.config import config
 from src.core.database import Database
@@ -53,3 +53,11 @@ async def set_result(
         await session.commit()
         await session.refresh(obj)
         return obj
+
+
+async def list_recent(limit: int = 20) -> list[Booking]:
+    async with _database().session() as session:
+        result = await session.execute(
+            select(Booking).order_by(col(Booking.created_at).desc()).limit(limit)
+        )
+        return list(result.scalars().all())
