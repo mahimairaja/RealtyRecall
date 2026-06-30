@@ -12,7 +12,7 @@ import hmac
 import uuid
 from typing import Annotated
 
-from fastapi import Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, status
 
 from src.core.config import config
 
@@ -64,3 +64,8 @@ async def get_agent_tenant_id(
             detail="X-Tenant-Id header is required",
         )
     return x_tenant_id
+
+
+# Terse alias for agent-facing route signatures (recall, buyers, matches), mirroring
+# clerk.CurrentTenant for the console. The agent presents X-Tenant-Id + X-Agent-Secret.
+AgentTenant = Annotated[str, Depends(get_agent_tenant_id)]

@@ -9,21 +9,26 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 from src.api.endpoints.matches import router as matches_router
+from src.core.clerk import get_current_tenant
 from src.memory.store import get_memory_store
 
 pytestmark = pytest.mark.integration
+
+TENANT = "org_matches_integration"
 
 
 async def test_matches_returns_a_summary():
     store = get_memory_store()
     await store.upsert_buyer(
+        TENANT,
         {
             "phone": "+1-519-555-0188",
             "name": "Pat",
             "criteria": {"area": "Sarnia", "minBeds": 3},
-        }
+        },
     )
     await store.add_listings(
+        TENANT,
         {"name": "Riley"},
         [
             {
@@ -37,6 +42,7 @@ async def test_matches_returns_a_summary():
     )
     app = FastAPI()
     app.include_router(matches_router, prefix="/api/v1")
+    app.dependency_overrides[get_current_tenant] = lambda: TENANT
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as c:

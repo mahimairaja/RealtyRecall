@@ -1,21 +1,22 @@
-import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 import src.api.endpoints.buyers as buyers_mod
-import src.core.widget_guard as widget_guard
+from src.core.tenant import get_agent_tenant_id
+
+TENANT = "org_buyers_test"
 
 
 class _FakeStore:
     def __init__(self) -> None:
-        self.upserts: list[dict] = []
-        self.forgotten: str | None = None
+        self.upserts: list[tuple[str, dict]] = []
+        self.forgotten: tuple[str, str] | None = None
 
-    async def upsert_buyer(self, buyer: dict) -> dict:
-        self.upserts.append(buyer)
+    async def upsert_buyer(self, tenant_id: str, buyer: dict) -> dict:
+        self.upserts.append((tenant_id, buyer))
         return buyer
 
-    async def get_buyer(self, phone: str) -> dict:
+    async def get_buyer(self, tenant_id: str, phone: str) -> dict:
         if "0100" in phone:
             return {
                 "found": True,
@@ -24,22 +25,17 @@ class _FakeStore:
             }
         return {"found": False, "phone": phone}
 
-    async def forget_buyer(self, phone: str) -> dict:
-        self.forgotten = phone
+    async def forget_buyer(self, tenant_id: str, phone: str) -> dict:
+        self.forgotten = (tenant_id, phone)
         return {"forgotten": True, "phone": phone}
-
-
-@pytest.fixture(autouse=True)
-def _reset_limiter():
-    widget_guard._limiter = None
-    yield
-    widget_guard._limiter = None
 
 
 def _client(monkeypatch, store) -> AsyncClient:
     monkeypatch.setattr(buyers_mod, "get_memory_store", lambda: store)
     app = FastAPI()
     app.include_router(buyers_mod.router, prefix="/api/v1")
+    # Stand in for the agent-secret-gated tenant so the test does not need the header.
+    app.dependency_overrides[get_agent_tenant_id] = lambda: TENANT
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 
@@ -56,8 +52,9 @@ async def test_upsert_buyer(monkeypatch):
         )
     assert resp.status_code == 201
     assert resp.json()["phone"] == "+15195550100"
-    assert store.upserts[0]["name"] == "Dana"
-    assert store.upserts[0]["criteria"]["area"] == "Sarnia"
+    assert store.upserts[0][0] == TENANT
+    assert store.upserts[0][1]["name"] == "Dana"
+    assert store.upserts[0][1]["criteria"]["area"] == "Sarnia"
 
 
 async def test_get_known_buyer_returns_summary(monkeypatch):
@@ -84,4 +81,4 @@ async def test_forget_buyer(monkeypatch):
         resp = await c.delete("/api/v1/buyers/+15195550100")
     assert resp.status_code == 200
     assert resp.json()["forgotten"] is True
-    assert store.forgotten == "+15195550100"
+    assert store.forgotten == (TENANT, "+15195550100")

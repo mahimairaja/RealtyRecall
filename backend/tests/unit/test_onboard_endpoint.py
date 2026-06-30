@@ -4,27 +4,30 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
-import src.core.widget_guard as widget_guard
 import src.services.onboard_service as onboard_service
 from src.api.endpoints.listings import router as listings_router
 from src.api.endpoints.onboard import router as onboard_router
+from src.core.clerk import get_current_tenant
 
 FIXTURES = Path(__file__).parent.parent / "fixtures"
+
+# Staging and the Cognee write are keyed by the Clerk-verified tenant; the test stands in
+# for it so it does not need a real JWT, and the `realtor` form/query value is display-only.
+TENANT = "org_onboard_test"
 
 
 @pytest.fixture(autouse=True)
 def _reset_state():
     onboard_service.get_staging_store().clear()
-    widget_guard._limiter = None
     yield
     onboard_service.get_staging_store().clear()
-    widget_guard._limiter = None
 
 
 def _client() -> AsyncClient:
     app = FastAPI()
     app.include_router(onboard_router, prefix="/api/v1")
     app.include_router(listings_router, prefix="/api/v1")
+    app.dependency_overrides[get_current_tenant] = lambda: TENANT
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 
@@ -36,7 +39,7 @@ async def test_onboard_requires_authorization():
             files={"file": ("jsonld.html", b"<html></html>", "text/html")},
         )
     assert resp.status_code == 403
-    assert onboard_service.get_staging_store().list("Riley") == []
+    assert onboard_service.get_staging_store().list(TENANT) == []
 
 
 async def test_onboard_extracts_and_stages():

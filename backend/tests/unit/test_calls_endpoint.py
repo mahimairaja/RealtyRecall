@@ -12,10 +12,10 @@ class _Row:
 
 class _FakeStore:
     def __init__(self) -> None:
-        self.improved: list[str] = []
+        self.improved: list[tuple[str, str | None]] = []
 
-    async def improve(self, dataset: str) -> None:
-        self.improved.append(dataset)
+    async def improve(self, tenant_id: str, phone: str | None = None) -> None:
+        self.improved.append((tenant_id, phone))
 
 
 @pytest.fixture(autouse=True)
@@ -44,37 +44,39 @@ async def test_close_call_persists_and_improves(monkeypatch):
 
     async with _client() as c:
         resp = await c.post(
-            "/api/v1/calls/room-1/close",
+            "/api/v1/calls/t_org_abc_def123456789/close",
             json={"outcome": "completed", "buyer_phone": "+15195550100"},
         )
     assert resp.status_code == 200
     assert resp.json()["id"] == 7
-    assert captured["room_name"] == "room-1"
+    assert captured["room_name"] == "t_org_abc_def123456789"
     assert captured["outcome"] == "completed"
-    # A non-tenant room name leaves tenant_id unset rather than guessing.
-    assert captured["tenant_id"] is None
-    # improve was folded in for the buyer's dataset
-    assert store.improved == ["buyer-15195550100"]
+    # The tenant is recovered from the t_{tenant}_{random} room name.
+    assert captured["tenant_id"] == "org_abc"
+    # improve was folded into this tenant's buyer memory.
+    assert store.improved == [("org_abc", "+15195550100")]
 
 
-async def test_close_call_stamps_tenant_from_room_name(monkeypatch):
+async def test_close_call_non_tenant_room_leaves_tenant_unset(monkeypatch):
     captured: dict = {}
 
     async def fake_create(values: dict) -> _Row:
         captured.update(values)
         return _Row()
 
+    store = _FakeStore()
     monkeypatch.setattr(calls_mod.call_log_repository, "create", fake_create)
-    monkeypatch.setattr(calls_mod, "get_memory_store", lambda: _FakeStore())
+    monkeypatch.setattr(calls_mod, "get_memory_store", lambda: store)
 
     async with _client() as c:
         resp = await c.post(
-            "/api/v1/calls/t_org_abc_def123456789/close",
-            json={"outcome": "completed"},
+            "/api/v1/calls/room-1/close",
+            json={"outcome": "completed", "buyer_phone": "+15195550100"},
         )
     assert resp.status_code == 200
-    # The tenant is recovered from the t_{tenant}_{random} room name.
-    assert captured["tenant_id"] == "org_abc"
+    # A non-tenant room name leaves tenant_id unset and skips improve (no tenant to scope to).
+    assert captured["tenant_id"] is None
+    assert store.improved == []
 
 
 async def test_close_call_without_phone_skips_improve(monkeypatch):

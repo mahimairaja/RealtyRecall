@@ -12,16 +12,17 @@ from __future__ import annotations
 import os
 import re
 from typing import Any
+from uuid import NAMESPACE_OID, uuid5
 
 import asyncpg
 import cognee
 from cognee import SearchType
+from cognee.modules.engine.models import NodeSet
 from cognee.modules.engine.operations.setup import setup as cognee_setup
 from cognee.tasks.storage import add_data_points
 
 from src.memory.models import Buyer, Listing, Neighbourhood, Realtor, Showing
 
-LISTINGS_DATASET = "listings"
 _configured = False
 _setup_done = False
 
@@ -134,10 +135,32 @@ async def ensure_cognee() -> None:
         _setup_done = True
 
 
-def buyer_dataset(phone: str) -> str:
-    """Each buyer gets its own dataset so forget removes exactly that buyer."""
+def tenant_tag(tenant_id: str) -> str:
+    """The NodeSet name that scopes every graph node to one realtor (tenant). Recall and
+    buyer-matching search only within this set, so one realtor never sees another's data.
+    """
+    return f"tenant_{tenant_id}"
+
+
+def _tenant_nodeset(tenant_id: str) -> NodeSet:
+    """A stable NodeSet for the tenant: typed nodes are tagged with it on write, and search
+    filters by it on read. The id is derived from the name so every write reuses one set.
+    """
+    name = tenant_tag(tenant_id)
+    return NodeSet(id=uuid5(NAMESPACE_OID, name=name), name=name)
+
+
+def listings_dataset(tenant_id: str) -> str:
+    """The tenant's listings dataset (the buyer text flow and improve are dataset-scoped)."""
+    return f"tenant_{tenant_id}_listings"
+
+
+def buyer_dataset(tenant_id: str, phone: str) -> str:
+    """Each buyer gets its own per-tenant dataset so forget removes exactly that buyer and a
+    shared phone number never collides across realtors.
+    """
     digits = re.sub(r"\D", "", phone or "")
-    return f"buyer-{digits}"
+    return f"tenant_{tenant_id}_buyer_{digits}"
 
 
 def _criteria_to_text(criteria: dict[str, Any]) -> str:
@@ -158,12 +181,19 @@ def _buyer_to_text(buyer: dict[str, Any]) -> str:
 
 
 class MemoryStore:
-    """The realty memory: listings and buyers, backed by Cognee."""
+    """The realty memory: listings and buyers, backed by Cognee.
+
+    Every operation is scoped to a tenant (the realtor's Clerk org). Typed graph nodes are
+    tagged with the tenant's NodeSet on write and search filters by it on read, and the
+    per-buyer text datasets are namespaced by tenant, so one realtor's listings and buyers
+    are never visible to another's.
+    """
 
     async def add_listings(
-        self, realtor: dict[str, Any], listings: list[dict[str, Any]]
+        self, tenant_id: str, realtor: dict[str, Any], listings: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         await ensure_cognee()
+        nodeset = _tenant_nodeset(tenant_id)
         realtor_node = Realtor(name=realtor["name"], email=realtor.get("email"))
         points: list[Any] = [realtor_node]
         represented: list[Any] = []
@@ -172,6 +202,7 @@ class MemoryStore:
             area = item.get("area") or item.get("neighbourhood")
             if area:
                 hood = Neighbourhood(name=area, city=item.get("city"))
+                hood.belongs_to_set = [nodeset]
                 points.append(hood)
             listing = Listing(
                 code=item["code"],
@@ -184,25 +215,31 @@ class MemoryStore:
                 image_url=item.get("image_url"),
                 located_in=hood,
             )
+            listing.belongs_to_set = [nodeset]
             points.append(listing)
             represented.append(listing)
         realtor_node.represents = represented
+        realtor_node.belongs_to_set = [nodeset]
         await add_data_points(points)
         return listings
 
-    async def recall(self, criteria: dict[str, Any] | str, top_k: int = 5) -> list[Any]:
+    async def recall(
+        self, tenant_id: str, criteria: dict[str, Any] | str, top_k: int = 5
+    ) -> list[Any]:
         await ensure_cognee()
         query = criteria if isinstance(criteria, str) else _criteria_to_text(criteria)
         results: list[Any] = await cognee.search(
             query_text=query,
             query_type=SearchType.GRAPH_COMPLETION,
+            node_type=NodeSet,
+            node_name=[tenant_tag(tenant_id)],
             top_k=top_k,
         )
         return results
 
-    async def match_buyers(self, listing: dict[str, Any]) -> str:
+    async def match_buyers(self, tenant_id: str, listing: dict[str, Any]) -> str:
         """Find buyers whose stated criteria match a (newly added) listing, with which of
-        their wishes it meets. Searches the default graph (typed Buyer + Listing nodes).
+        their wishes it meets. Scoped to this tenant's NodeSet (typed Buyer + Listing nodes).
         """
         await ensure_cognee()
         parts: list[str] = []
@@ -218,34 +255,47 @@ class MemoryStore:
             "home like this? Name each matching buyer and which of their wishes it meets."
         )
         results: list[Any] = await cognee.search(
-            query_text=query, query_type=SearchType.GRAPH_COMPLETION, top_k=5
+            query_text=query,
+            query_type=SearchType.GRAPH_COMPLETION,
+            node_type=NodeSet,
+            node_name=[tenant_tag(tenant_id)],
+            top_k=5,
         )
         return str(results[0]) if results else ""
 
-    async def upsert_buyer(self, buyer: dict[str, Any]) -> dict[str, Any]:
+    async def upsert_buyer(
+        self, tenant_id: str, buyer: dict[str, Any]
+    ) -> dict[str, Any]:
         await ensure_cognee()
+        nodeset = _tenant_nodeset(tenant_id)
         node = Buyer(
             phone=buyer["phone"],
             name=buyer.get("name"),
             email=buyer.get("email"),
             criteria=buyer.get("criteria"),
         )
+        node.belongs_to_set = [nodeset]
         await add_data_points([node])
-        # Keep a per-buyer dataset (cognified so it is searchable) so forget_buyer removes
-        # exactly this buyer and get_buyer can recall them on a return call.
-        dataset = buyer_dataset(buyer["phone"])
-        await cognee.add(_buyer_to_text(buyer), dataset_name=dataset)
+        # Keep a per-buyer, per-tenant dataset (cognified so it is searchable) so forget_buyer
+        # removes exactly this buyer and get_buyer can recall them on a return call. node_set
+        # tags the cognified text too, so a shared phone never crosses tenants.
+        dataset = buyer_dataset(tenant_id, buyer["phone"])
+        await cognee.add(
+            _buyer_to_text(buyer),
+            dataset_name=dataset,
+            node_set=[tenant_tag(tenant_id)],
+        )
         await cognee.cognify(datasets=[dataset])
         return buyer
 
-    async def get_buyer(self, phone: str) -> dict[str, Any]:
+    async def get_buyer(self, tenant_id: str, phone: str) -> dict[str, Any]:
         """Recall a returning buyer by phone: name, prior criteria, homes discussed.
 
-        Searches only the buyer's own dataset. Always returns a dict; found=False means a
-        new (or forgotten) buyer.
+        Searches only the buyer's own per-tenant dataset. Always returns a dict; found=False
+        means a new (or forgotten) buyer.
         """
         await ensure_cognee()
-        dataset = buyer_dataset(phone)
+        dataset = buyer_dataset(tenant_id, phone)
         try:
             results = await cognee.search(
                 query_text=(
@@ -265,28 +315,43 @@ class MemoryStore:
     async def add_showing(
         self,
         *,
+        tenant_id: str,
         phone: str | None,
         property_code: str | None,
         address: str | None,
         when_utc: str,
     ) -> None:
         """Record a booked showing: a Showing node plus a note folded into the buyer's
-        dataset so a later recall mentions it.
+        dataset so a later recall mentions it. Both are scoped to the tenant.
         """
         await ensure_cognee()
-        await add_data_points([Showing(when_utc=when_utc)])
-        dataset = buyer_dataset(phone) if phone else LISTINGS_DATASET
+        showing = Showing(when_utc=when_utc)
+        showing.belongs_to_set = [_tenant_nodeset(tenant_id)]
+        await add_data_points([showing])
+        dataset = (
+            buyer_dataset(tenant_id, phone)
+            if phone
+            else listings_dataset(tenant_id)
+        )
         note = f"A showing is booked for {address or property_code} on {when_utc}"
         note += f" for the buyer at {phone}." if phone else "."
-        await cognee.add(note, dataset_name=dataset)
+        await cognee.add(note, dataset_name=dataset, node_set=[tenant_tag(tenant_id)])
 
-    async def improve(self, dataset: str = LISTINGS_DATASET) -> None:
+    async def improve(self, tenant_id: str, phone: str | None = None) -> None:
+        """Fold the latest understanding back into memory. Scoped to the buyer's dataset when
+        a phone is given, else the tenant's listings dataset.
+        """
         await ensure_cognee()
+        dataset = (
+            buyer_dataset(tenant_id, phone) if phone else listings_dataset(tenant_id)
+        )
         await cognee.improve(dataset=dataset)
 
-    async def forget_buyer(self, phone: str) -> dict[str, Any]:
+    async def forget_buyer(self, tenant_id: str, phone: str) -> dict[str, Any]:
         await ensure_cognee()
-        result: dict[str, Any] = await cognee.forget(dataset=buyer_dataset(phone))
+        result: dict[str, Any] = await cognee.forget(
+            dataset=buyer_dataset(tenant_id, phone)
+        )
         return result
 
 
