@@ -191,6 +191,11 @@ class Config(BaseSettings):
     LIVEKIT_API_KEY: str | None = None
     LIVEKIT_API_SECRET: SecretStr | None = None
 
+    # Shared secret the agent worker presents (X-Agent-Secret) so the backend can trust the
+    # tenant it asserts (X-Tenant-Id). Must match the agent's AGENT_SERVICE_SECRET. Without
+    # it, the tenant-scoped agent endpoints refuse, so a forged header cannot cross tenants.
+    AGENT_SERVICE_SECRET: SecretStr | None = None
+
     # cal.com booking (the realtor's showing calendar). Without these, availability and
     # bookings degrade to a spoken fallback. RR_CAL_EVENT_TYPE_ID is the new showings event.
     CAL_API_KEY: SecretStr | None = None
