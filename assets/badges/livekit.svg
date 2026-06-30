@@ -1,11 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="102" height="30" role="img" aria-label="LiveKit">
-  <defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b1f2a"/><stop offset="1" stop-color="#12141b"/></linearGradient></defs>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b1f2a"/><stop offset="1" stop-color="#12141b"/></linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity="0.10"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></linearGradient>
+  </defs>
   <rect x="0.5" y="0.5" width="101" height="29" rx="14.5" fill="url(#bg)" stroke="#2b3140"/>
+  <rect x="0.5" y="0.5" width="101" height="15" rx="14.5" fill="url(#gloss)"/>
   <g fill="#22D3EE">
-    <rect x="12" y="11" width="2.2" height="8" rx="1.1"/>
-    <rect x="15.2" y="8" width="2.2" height="14" rx="1.1"/>
-    <rect x="18.4" y="10" width="2.2" height="10" rx="1.1"/>
-    <rect x="21.6" y="12.5" width="2.2" height="6" rx="1.1"/>
+    <rect x="12" y="11" width="2.2" height="8" rx="1.1">
+      <animate attributeName="height" values="8;14;8" dur="1.1s" repeatCount="indefinite"/>
+      <animate attributeName="y" values="11;8;11" dur="1.1s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="15.2" y="8" width="2.2" height="14" rx="1.1">
+      <animate attributeName="height" values="14;7;14" dur="0.9s" repeatCount="indefinite"/>
+      <animate attributeName="y" values="8;11.5;8" dur="0.9s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="18.4" y="10" width="2.2" height="10" rx="1.1">
+      <animate attributeName="height" values="10;16;10" dur="1.25s" repeatCount="indefinite"/>
+      <animate attributeName="y" values="10;7;10" dur="1.25s" repeatCount="indefinite"/>
+    </rect>
+    <rect x="21.6" y="12.5" width="2.2" height="6" rx="1.1">
+      <animate attributeName="height" values="6;11;6" dur="1.0s" repeatCount="indefinite"/>
+      <animate attributeName="y" values="12.5;10;12.5" dur="1.0s" repeatCount="indefinite"/>
+    </rect>
   </g>
   <text x="33" y="20" textLength="56" lengthAdjust="spacingAndGlyphs" font-family="'Segoe UI',system-ui,-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="600" fill="#e8eaf0">LiveKit</text>
 </svg>
