@@ -7,6 +7,10 @@ from pydantic import BaseModel
 
 class RoomTokenRequest(BaseModel):
     # All optional: the server fills sensible defaults for room/identity.
+    # The tenant slug (= Clerk org id) of the realtor whose widget is calling. When set,
+    # the server names the room t_{tenant}_{random} and ignores any client room_name, so the
+    # agent can derive the tenant by parsing the room name.
+    tenant: str | None = None
     room_name: str | None = None
     participant_identity: str | None = None
     participant_name: str | None = None
