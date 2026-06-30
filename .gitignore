@@ -5,6 +5,7 @@ docs/refinery
 scripts/gate.sh
 Taskfile.yml
 .claude
+.playwright-mcp
 # Root env (copy .env.example -> .env)
 .env
 .env.local

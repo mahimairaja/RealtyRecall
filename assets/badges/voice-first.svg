@@ -1,6 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="134" height="30" role="img" aria-label="Voice First">
-  <defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b1f2a"/><stop offset="1" stop-color="#12141b"/></linearGradient></defs>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b1f2a"/><stop offset="1" stop-color="#12141b"/></linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff" stop-opacity="0.10"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></linearGradient>
+  </defs>
   <rect x="0.5" y="0.5" width="133" height="29" rx="14.5" fill="url(#bg)" stroke="#2b3140"/>
+  <rect x="0.5" y="0.5" width="133" height="15" rx="14.5" fill="url(#gloss)"/>
   <g stroke="#38BDF8" stroke-width="1.5" fill="none" stroke-linecap="round">
     <rect x="15" y="7" width="6" height="9" rx="3" fill="#38BDF8" stroke="none"/>
     <path d="M13 13.5 a5 5 0 0 0 10 0"/>
