@@ -127,3 +127,32 @@ async def test_token_carries_short_ttl(monkeypatch):
     base = payload.get("nbf") or payload.get("iat")
     assert base is not None
     assert payload["exp"] - base == 300
+
+
+async def test_token_with_known_tenant_names_room_for_tenant(monkeypatch):
+    import src.api.endpoints.token as token_ep
+
+    org = "org_known"
+
+    async def _found(_clerk_org_id):
+        return object()  # any non-None stand-in for a Tenant row
+
+    monkeypatch.setattr(token_ep.tenant_repository, "get_by_clerk_org_id", _found)
+    resp = await _request_token(_cfg(), monkeypatch, body={"tenant": org})
+    assert resp.status_code == 201
+    claims = TokenVerifier(KEY, SECRET).verify(resp.json()["participant_token"])
+    assert claims.video.room.startswith(f"t_{org}_")
+
+
+async def test_token_with_unknown_tenant_returns_404(monkeypatch):
+    import src.api.endpoints.token as token_ep
+
+    async def _missing(_clerk_org_id):
+        return None
+
+    monkeypatch.setattr(token_ep.tenant_repository, "get_by_clerk_org_id", _missing)
+    resp = await _request_token(
+        _cfg(), monkeypatch, body={"tenant": "org_does_not_exist"}
+    )
+    assert resp.status_code == 404
+    assert "participant_token" not in resp.json()

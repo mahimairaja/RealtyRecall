@@ -8,10 +8,13 @@ suffix is uuid hex (no underscores), so the rpartition is unambiguous.
 
 from __future__ import annotations
 
+import hmac
 import uuid
 from typing import Annotated
 
-from fastapi import Header
+from fastapi import Header, HTTPException, status
+
+from src.core.config import config
 
 
 def room_name_for_tenant(tenant_id: str) -> str:
@@ -31,8 +34,33 @@ def tenant_from_room_name(room: str | None) -> str | None:
 
 async def get_agent_tenant_id(
     x_tenant_id: Annotated[str, Header(alias="X-Tenant-Id")],
+    x_agent_secret: Annotated[str | None, Header(alias="X-Agent-Secret")] = None,
 ) -> str:
     """Agent requests carry the tenant in the X-Tenant-Id header (the agent derives it by
     parsing its room name). The realtor console uses get_current_tenant (Clerk JWT) instead.
+
+    The header is self-asserted, so it is only trusted when the caller also presents the
+    shared agent secret (X-Agent-Secret == AGENT_SERVICE_SECRET). Without that gate any
+    client could forge a tenant id and poison another realtor's memory or book on their
+    calendar. The secret must be configured; if it is unset the endpoint refuses outright.
     """
+    expected = (
+        config.AGENT_SERVICE_SECRET.get_secret_value()
+        if config.AGENT_SERVICE_SECRET
+        else None
+    )
+    if (
+        not expected
+        or not x_agent_secret
+        or not hmac.compare_digest(x_agent_secret, expected)
+    ):
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            detail="agent service authentication required",
+        )
+    if not x_tenant_id:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail="X-Tenant-Id header is required",
+        )
     return x_tenant_id
