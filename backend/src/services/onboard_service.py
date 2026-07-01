@@ -18,6 +18,7 @@ from typing import Annotated, Any, Protocol
 
 from fastapi import Depends
 from sqlalchemy import delete
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col, select
 
@@ -116,9 +117,7 @@ class DbStagingStore:
     """Postgres-backed staging: one `staged_onboards` row per tenant. Read-modify-write on a
     small per-tenant row (short-lived, reviewed by a single realtor), so no row locking."""
 
-    async def _row(
-        self, session: AsyncSession, tenant_id: str
-    ) -> StagedOnboard | None:
+    async def _row(self, session: AsyncSession, tenant_id: str) -> StagedOnboard | None:
         result = await session.execute(
             select(StagedOnboard).where(col(StagedOnboard.tenant_id) == tenant_id)
         )
@@ -128,15 +127,30 @@ class DbStagingStore:
         self, tenant_id: str, listings: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
         out = _new_drafts(listings)
+        try:
+            await self._append_or_create(tenant_id, out)
+        except IntegrityError:
+            # Lost a concurrent insert race (tenant_id is unique): the row now exists, so the
+            # retry takes the append path instead of 500ing.
+            await self._append_or_create(tenant_id, out)
+        return out
+
+    async def _append_or_create(
+        self, tenant_id: str, new_drafts: list[dict[str, Any]]
+    ) -> None:
         async with _database().session() as session:
             row = await self._row(session, tenant_id)
             if row is None:
-                row = StagedOnboard(tenant_id=tenant_id, drafts=out, profile=None)
+                row = StagedOnboard(
+                    tenant_id=tenant_id, drafts=new_drafts, profile=None
+                )
             else:
-                row.drafts = [*row.drafts, *out]  # reassign so JSONB change is tracked
+                row.drafts = [
+                    *row.drafts,
+                    *new_drafts,
+                ]  # reassign so JSONB change tracks
             session.add(row)
             await session.commit()
-        return out
 
     async def list(self, tenant_id: str) -> list[dict[str, Any]]:
         async with _database().session() as session:
@@ -183,6 +197,14 @@ class DbStagingStore:
     ) -> None:
         if not profile:
             return
+        try:
+            await self._set_profile(tenant_id, profile)
+        except IntegrityError:
+            await self._set_profile(
+                tenant_id, profile
+            )  # lost the insert race; row exists now
+
+    async def _set_profile(self, tenant_id: str, profile: dict[str, Any]) -> None:
         async with _database().session() as session:
             row = await self._row(session, tenant_id)
             if row is None:
