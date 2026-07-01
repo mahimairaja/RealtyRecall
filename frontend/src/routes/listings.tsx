@@ -18,6 +18,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 
+// A public synthetic realtor site so first-time users can watch onboarding work in one click,
+// before they have their own site handy. Overridable per deploy.
+const SAMPLE_URL =
+  import.meta.env.VITE_SAMPLE_URL ?? "https://bluewater-homes-demo.vercel.app";
+
 function priceLabel(price?: number | null): string {
   return price != null ? `$${price.toLocaleString()}` : "Price on request";
 }
@@ -95,6 +100,33 @@ export default function Listings() {
     }
   }
 
+  async function runUrlOnboard(targetUrl: string, sample = false) {
+    setCrawling(true);
+    setStatus(
+      sample
+        ? "Reading our sample site — this can take a moment..."
+        : "Reading your site — this can take up to a minute...",
+    );
+    try {
+      const res = await onboardFromUrl(realtor, targetUrl);
+      setStaged(res.listings);
+      setProfile(res.profile ?? null);
+      setStatus(
+        res.listings.length
+          ? `Found ${res.listings.length} listing(s)${sample ? " on the sample site" : " on your site"}. Review, then go live.`
+          : "Couldn't find listings on that page. Try a specific listings page, or upload a file.",
+      );
+    } catch {
+      setStatus(
+        sample
+          ? "Couldn't reach the sample site just now. Try again in a moment."
+          : "Couldn't read that URL. Try another page, or upload a file.",
+      );
+    } finally {
+      setCrawling(false);
+    }
+  }
+
   async function handleImportUrl() {
     if (!url.trim()) {
       setStatus("Paste your site URL first.");
@@ -107,22 +139,14 @@ export default function Listings() {
     // Accept a bare domain: the backend requires a scheme, so default to https.
     const raw = url.trim();
     const normalized = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-    setCrawling(true);
-    setStatus("Reading your site — this can take up to a minute...");
-    try {
-      const res = await onboardFromUrl(realtor, normalized);
-      setStaged(res.listings);
-      setProfile(res.profile ?? null);
-      setStatus(
-        res.listings.length
-          ? `Found ${res.listings.length} listing(s) on your site. Review, then go live.`
-          : "Couldn't find listings on that page. Try a specific listings page, or upload a file.",
-      );
-    } catch {
-      setStatus("Couldn't read that URL. Try another page, or upload a file.");
-    } finally {
-      setCrawling(false);
-    }
+    await runUrlOnboard(normalized);
+  }
+
+  // Consent isn't required for the sample: it's our own site, offered for exactly this. Nothing
+  // goes live either way — the pulled listings still land in the review buffer first.
+  async function handleTrySample() {
+    setUrl(SAMPLE_URL);
+    await runUrlOnboard(SAMPLE_URL, true);
   }
 
   async function handleAddress(id: string, address: string) {
@@ -270,6 +294,14 @@ export default function Listings() {
               We read your own site and pull in every listing. You review it all
               before anything goes live.
             </p>
+            <button
+              type="button"
+              onClick={() => void handleTrySample()}
+              disabled={crawling || importing}
+              className="self-start text-xs font-medium text-primary underline-offset-4 hover:underline disabled:opacity-60"
+            >
+              New here? Try it with our sample site &rarr;
+            </button>
           </div>
 
           {/* Consent gates BOTH the URL fetch and the file upload, so it sits above both. */}
