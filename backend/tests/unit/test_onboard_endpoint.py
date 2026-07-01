@@ -97,6 +97,82 @@ async def test_listing_catalog_is_agent_authed(monkeypatch):
     assert seen["tenant"] == "org_agent"
 
 
+async def test_realtor_endpoint_is_agent_authed(monkeypatch):
+    seen = {}
+
+    class _Store:
+        async def get_realtor(self, tenant_id):
+            seen["tenant"] = tenant_id
+            return {
+                "name": "Morgan Bell",
+                "agency": "Bluewater Homes",
+                "area": "Sarnia",
+                "tagline": "Homes with heart",
+                "tone": "warm, local",
+            }
+
+    import src.api.endpoints.realtor as realtor_mod
+    from src.api.endpoints.realtor import router as realtor_router
+
+    monkeypatch.setattr(realtor_mod, "get_memory_store", lambda: _Store())
+    app = FastAPI()
+    app.include_router(realtor_router, prefix="/api/v1")
+    app.dependency_overrides[get_agent_tenant_id] = lambda: "org_agent"
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as c:
+        resp = await c.get("/api/v1/realtor")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["name"] == "Morgan Bell"
+    assert body["tone"] == "warm, local"
+    assert seen["tenant"] == "org_agent"
+
+
+async def test_confirm_persists_full_profile(monkeypatch):
+    listing = {
+        "code": "RR-1",
+        "address": "88 Maple Ridge Drive, Sarnia",
+        "price": 459000.0,
+        "beds": 3,
+        "baths": 2.0,
+        "sqft": 1500,
+        "image_url": None,
+        "area": "Sarnia",
+    }
+    profile = {
+        "name": "Riley Realty",
+        "agency": "Blue Door",
+        "area": "Sarnia",
+        "tagline": "Homes with heart",
+        "tone": "warm, professional",
+    }
+    captured = {}
+
+    async def fake_ingest(url):
+        return [listing], profile
+
+    class _Mem:
+        async def add_listings(self, tenant_id, realtor, drafts):
+            captured["realtor"] = realtor
+            return drafts
+
+    monkeypatch.setattr(onboard_mod.ingest_service, "ingest_url", fake_ingest)
+    monkeypatch.setattr(onboard_mod, "get_memory_store", lambda: _Mem())
+    async with _client() as c:
+        onb = await c.post(
+            "/api/v1/onboard",
+            data={"realtor": "", "authorized": "true", "url": "https://x.example"},
+        )
+        assert onb.status_code == 201
+        conf = await c.post("/api/v1/onboard/confirm", data={"realtor": ""})
+    assert conf.status_code == 200
+    # The whole persona is persisted onto the Realtor node, not just the name.
+    assert captured["realtor"]["name"] == "Riley Realty"
+    assert captured["realtor"]["agency"] == "Blue Door"
+    assert captured["realtor"]["tone"] == "warm, professional"
+
+
 async def test_onboard_from_url_stages_listings_and_profile(monkeypatch):
     listing = {
         "code": "RR-1",

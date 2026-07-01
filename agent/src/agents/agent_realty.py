@@ -18,7 +18,7 @@ from typing import Any
 from livekit.agents import Agent, RunContext, function_tool, get_job_context
 
 from src.core.config import config
-from src.prompts.instructions import REALTOR_INSTRUCTIONS
+from src.prompts.instructions import _clean, realtor_instructions
 from src.services.api_client import BackendApiClient
 
 logger = logging.getLogger("agent")
@@ -56,10 +56,6 @@ _RECORDING_NOTICE = (
     "Start by briefly and naturally letting the buyer know this call may be recorded for "
     "quality and training. Then continue: "
 )
-_DEFAULT_OPENER = (
-    "Greet the buyer warmly in one short sentence as the realtor's assistant and ask what "
-    "kind of home they are looking for."
-)
 
 
 class RealtyAgent(Agent):
@@ -68,9 +64,13 @@ class RealtyAgent(Agent):
         realtor: str | None = None,
         api: BackendApiClient | None = None,
         tenant_id: str | None = None,
+        persona: dict[str, Any] | None = None,
     ) -> None:
-        super().__init__(instructions=REALTOR_INSTRUCTIONS)
-        self._realtor = realtor or config.AGENT_NAME
+        # The realtor's inferred persona (name/agency/area/tagline/tone) shapes both the system
+        # prompt and the opener, so the assistant answers in their name and voice.
+        self._persona = persona or {}
+        super().__init__(instructions=realtor_instructions(persona))
+        self._realtor = self._persona.get("name") or realtor or config.AGENT_NAME
         # The tenant (realtor's Clerk org) this call serves, derived from the room name. The
         # client presents it to the backend so memory reads/writes are scoped to this realtor.
         self._tenant_id = tenant_id
@@ -94,11 +94,26 @@ class RealtyAgent(Agent):
         self._bg.add(task)
         task.add_done_callback(self._bg.discard)
 
+    def _opener(self) -> str:
+        """Greeting guidance, personalized to the realtor when we know who they are."""
+        name = _clean(self._persona.get("name"))
+        agency = _clean(self._persona.get("agency"))
+        if name and agency:
+            who = f"{name}'s assistant at {agency}"
+        elif name:
+            who = f"{name}'s assistant"
+        else:
+            who = "the realtor's assistant"
+        return (
+            f"Greet the buyer warmly in one short sentence as {who} and ask what kind of "
+            "home they are looking for."
+        )
+
     async def on_enter(self) -> None:
         # Cap call length so a stuck or abusive session cannot run up STT/LLM/TTS cost.
         self._max_call_task = asyncio.create_task(self._hang_up_max_duration())
         # The PIPEDA recording disclosure is always the first thing said.
-        self.session.generate_reply(instructions=_RECORDING_NOTICE + _DEFAULT_OPENER)
+        self.session.generate_reply(instructions=_RECORDING_NOTICE + self._opener())
 
     async def _hang_up_max_duration(self) -> None:
         try:

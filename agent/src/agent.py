@@ -18,6 +18,7 @@ from src.agents.agent_realty import RealtyAgent
 from src.core.config import config
 from src.core.events import register_event_handlers
 from src.runtime.observers import post_call_log
+from src.services.api_client import BackendApiClient
 from src.utils.room import identify, parse_tenant_id
 
 logger = logging.getLogger("agent")
@@ -81,7 +82,17 @@ async def entrypoint(ctx: JobContext) -> None:
         ),
     )
 
-    realty_agent = RealtyAgent(tenant_id=tenant_id)
+    # Read the realtor's synthesized persona so the assistant answers in their name and voice.
+    # Best-effort: a missing tenant or a backend hiccup just falls back to the generic persona.
+    api = BackendApiClient(tenant_id=tenant_id)
+    persona: dict | None = None
+    if tenant_id:
+        try:
+            persona = await api.get_realtor()
+        except Exception as exc:  # noqa: BLE001  (persona is best-effort)
+            logger.warning("realtor persona fetch failed: %s", exc)
+
+    realty_agent = RealtyAgent(tenant_id=tenant_id, api=api, persona=persona)
     log_usage_summary = register_event_handlers(session)
 
     async def _on_shutdown() -> None:

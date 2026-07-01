@@ -224,7 +224,14 @@ class MemoryStore:
         """
         await ensure_cognee()
         nodeset = _tenant_nodeset(tenant_id)
-        realtor_node = Realtor(name=realtor["name"], email=realtor.get("email"))
+        realtor_node = Realtor(
+            name=realtor["name"],
+            email=realtor.get("email"),
+            agency=realtor.get("agency"),
+            area=realtor.get("area"),
+            tagline=realtor.get("tagline"),
+            tone=realtor.get("tone"),
+        )
         points: list[Any] = [realtor_node]
         represented: list[Any] = []
         for item in listings:
@@ -311,6 +318,24 @@ class MemoryStore:
                 }
             )
         return out
+
+    async def get_realtor(self, tenant_id: str) -> dict[str, Any] | None:
+        """The realtor's own persona (name + the agency/area/tagline/tone inferred from their
+        site), newest first. The live voice agent reads this to answer in their name and voice.
+        Graph values come back as strings, which is exactly what the persona fields are.
+        """
+        rows = await self._nodeset_nodes(tenant_id, "Realtor")
+        if not rows:
+            return None
+        rows.sort(key=lambda p: str(p.get("created_at") or ""), reverse=True)
+        props = rows[0]
+        return {
+            "name": props.get("name"),
+            "agency": props.get("agency"),
+            "area": props.get("area"),
+            "tagline": props.get("tagline"),
+            "tone": props.get("tone"),
+        }
 
     async def list_buyers(self, tenant_id: str) -> list[dict[str, Any]]:
         """Every remembered buyer for the realtor, newest first, deduped by phone."""
