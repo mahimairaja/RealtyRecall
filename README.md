@@ -7,7 +7,7 @@
 **The always-on voice receptionist for solo real estate agents: it answers every call in your name, qualifies the buyer, books the showing, and never forgets a caller.**
 
 <p>
-  <a href="https://hangover.mahimai.ca"><img src="assets/badges/live-demo.svg" height="30" alt="Live demo"/></a>
+  <a href="https://realtyrecall.mahimai.ca"><img src="assets/badges/live-demo.svg" height="30" alt="Live demo"/></a>
   <img src="assets/badges/cognee.svg" height="30" alt="Cognee"/>
   <img src="assets/badges/livekit.svg" height="30" alt="LiveKit"/>
   <img src="assets/badges/fastapi.svg" height="30" alt="FastAPI"/>
@@ -16,7 +16,7 @@
   <a href="LICENSE"><img src="assets/badges/license-mit.svg" height="30" alt="MIT License"/></a>
 </p>
 
-[Live demo](https://hangover.mahimai.ca) · [Quick start](#quick-start) · [Architecture](#architecture) · [Memory](#memory-that-carries-across-calls)
+[Live demo](https://realtyrecall.mahimai.ca) · [Quick start](#quick-start) · [Architecture](#architecture) · [Memory](#memory-that-carries-across-calls)
 
 </div>
 
@@ -65,7 +65,7 @@ RealtyRecall gives every solo agent a receptionist that has actually read their 
 
 > Watch the demo: **[link coming with the build log]**
 
-Fastest way to try it yourself: open the [live demo](https://hangover.mahimai.ca), connect your listings by pasting a listings page or uploading a file, and call in. The assistant answers in your name, qualifies you, and recommends the homes that fit. Hang up and call back, and it greets you by name and remembers what you wanted. Ask it to forget you, and it does.
+Fastest way to try it yourself: open the [live demo](https://realtyrecall.mahimai.ca), connect your listings by pasting a listings page or uploading a file, and call in. The assistant answers in your name, qualifies you, and recommends the homes that fit. Hang up and call back, and it greets you by name and remembers what you wanted. Ask it to forget you, and it does.
 
 ## Architecture
 
