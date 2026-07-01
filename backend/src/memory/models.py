@@ -36,6 +36,12 @@ class Listing(DataPoint):
 class Realtor(DataPoint):
     name: str
     email: str | None = None
+    # Persona inferred from the realtor's own site during URL onboarding; drives how the live
+    # voice agent introduces itself and speaks. All optional (a file/CSV onboard sets none).
+    agency: str | None = None
+    area: str | None = None
+    tagline: str | None = None
+    tone: str | None = None
     represents: SkipValidation[Any] = None
     metadata: dict[str, Any] = {"index_fields": ["name"]}
 

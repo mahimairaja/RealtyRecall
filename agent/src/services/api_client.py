@@ -53,6 +53,12 @@ class BackendApiClient:
             data: dict[str, Any] = resp.json()
         return data
 
+    async def get_realtor(self) -> dict[str, Any]:
+        """The realtor's synthesized persona (name/agency/area/tagline/tone) for the agent
+        voice. Fields are null when nothing is connected yet; the agent then stays generic.
+        """
+        return await self._get("/api/v1/realtor")
+
     async def recall(self, realtor: str, criteria: str) -> str:
         """Ask the backend to recall matching listings; return the grounded answer."""
         data = await self._post(

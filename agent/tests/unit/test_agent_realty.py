@@ -88,3 +88,21 @@ async def test_push_event_is_a_noop_without_a_room():
     # No LiveKit job context in a unit test: the push resolves to nothing, never raises.
     agent = RealtyAgent(realtor="Riley", api=_FakeApi())
     await agent._push_event("shortlist", {"matches": []})
+
+
+def test_persona_sets_realtor_name_and_personalizes_opener():
+    agent = RealtyAgent(
+        api=_FakeApi(), persona={"name": "Morgan Bell", "agency": "Bluewater Homes"}
+    )
+    assert agent._realtor == "Morgan Bell"  # answers in the realtor's own name
+    assert "Morgan Bell's assistant at Bluewater Homes" in agent._opener()
+
+
+def test_name_only_persona_opener():
+    agent = RealtyAgent(api=_FakeApi(), persona={"name": "Morgan Bell"})
+    assert "Morgan Bell's assistant" in agent._opener()
+
+
+def test_no_persona_falls_back_to_generic_opener():
+    agent = RealtyAgent(realtor="Riley", api=_FakeApi())
+    assert "the realtor's assistant" in agent._opener()

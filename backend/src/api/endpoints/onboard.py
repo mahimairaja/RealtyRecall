@@ -102,6 +102,15 @@ async def confirm(
         )
     profile = store.get_profile(tenant_id) or {}
     name = profile.get("name") or realtor
-    await get_memory_store().add_listings(tenant_id, {"name": name}, drafts)
+    # Persist the whole inferred persona onto the Realtor node, not just the name, so the live
+    # voice agent can answer in the realtor's name, agency, and tone.
+    realtor_meta = {
+        "name": name,
+        "agency": profile.get("agency"),
+        "area": profile.get("area"),
+        "tagline": profile.get("tagline"),
+        "tone": profile.get("tone"),
+    }
+    await get_memory_store().add_listings(tenant_id, realtor_meta, drafts)
     store.clear(tenant_id)
     return ConfirmResponse(realtor=name, inserted=len(drafts))

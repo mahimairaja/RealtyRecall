@@ -63,6 +63,32 @@ async def test_recall_posts_and_returns_answer():
     assert "Riley" in seen["body"]
 
 
+async def test_get_realtor_fetches_persona():
+    seen: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["method"] = request.method
+        seen["path"] = request.url.path
+        return httpx.Response(
+            200,
+            json={
+                "name": "Morgan Bell",
+                "agency": "Bluewater Homes",
+                "area": "Sarnia",
+                "tagline": "Homes with heart",
+                "tone": "warm, local",
+            },
+        )
+
+    client = BackendApiClient(
+        base_url="http://test", transport=httpx.MockTransport(handler)
+    )
+    persona = await client.get_realtor()
+    assert (seen["method"], seen["path"]) == ("GET", "/api/v1/realtor")
+    assert persona["name"] == "Morgan Bell"
+    assert persona["tone"] == "warm, local"
+
+
 async def test_lead_availability_booking_routes():
     seen: list = []
 
