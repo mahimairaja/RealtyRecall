@@ -18,7 +18,9 @@ export function MatchCard() {
         const newest = listings[0];
         if (!newest?.code || !active) return;
         setAddress(newest.address ?? newest.code);
-        setReport(await getListingMatches(newest.code));
+        const matches = await getListingMatches(newest.code);
+        if (!active) return;
+        setReport(matches);
       } catch {
         // best effort; the card just stays empty
       }
@@ -44,8 +46,8 @@ export function MatchCard() {
             {report.count} match{report.count === 1 ? "" : "es"}
           </Badge>
         </div>
-        {report.buyers.map((b) => (
-          <div key={b.phone ?? b.name} className="text-foreground">
+        {report.buyers.map((b, i) => (
+          <div key={b.phone ?? b.name ?? i} className="text-foreground">
             {b.name}
           </div>
         ))}
