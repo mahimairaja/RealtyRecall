@@ -241,3 +241,17 @@ export async function getGraph(): Promise<MemoryGraphData> {
   const res = await fetch(`${API_BASE}/graph`, { headers: await authHeaders() });
   return asJSON<MemoryGraphData>(res, "getGraph");
 }
+
+export interface MatchReport {
+  narrative: string;
+  buyers: { name: string | null; phone: string | null }[];
+  count: number;
+}
+
+// Which remembered buyers want a specific connected listing (graph match).
+export async function getListingMatches(code: string): Promise<MatchReport> {
+  const res = await fetch(`${API_BASE}/listings/${encodeURIComponent(code)}/matches`, {
+    headers: await authHeaders(),
+  });
+  return asJSON<MatchReport>(res, "getListingMatches");
+}

@@ -2,6 +2,7 @@
 import pytest
 
 import src.memory.graph_service as gs
+import src.memory.store as store_mod
 
 
 class _FakeGraph:
@@ -104,3 +105,23 @@ async def test_get_subgraph_keeps_the_most_recent_nodes_when_capping(monkeypatch
     out = await gs.get_graph_service().get_subgraph("org_abc", cap=2)
     labels = {n["label"] for n in out["nodes"]}
     assert labels == {"4 Main St", "3 Main St"}  # newest two, not the oldest two
+
+
+async def test_match_report_grounds_buyers_in_the_narrative(monkeypatch):
+    class _Store:
+        async def match_buyers(self, tenant_id, listing):
+            return "Dana Callahan is looking for a 3-bed in Sarnia and this fits."
+
+        async def list_buyers(self, tenant_id):
+            return [
+                {"name": "Dana Callahan", "phone": "+15195550142"},
+                {"name": "Sam Rivera", "phone": "+15195550188"},
+            ]
+
+    monkeypatch.setattr(store_mod, "get_memory_store", lambda: _Store(), raising=True)
+    out = await gs.get_graph_service().match_report(
+        "org_abc", {"code": "RR-102", "area": "Sarnia", "beds": 3, "price": 459000}
+    )
+    assert out["count"] == 1
+    assert out["buyers"] == [{"name": "Dana Callahan", "phone": "+15195550142"}]
+    assert "Dana" in out["narrative"]

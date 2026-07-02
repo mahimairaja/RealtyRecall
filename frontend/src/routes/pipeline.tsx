@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CalendarCheck, PhoneCall, Users } from "lucide-react";
 import { getPipeline, type PipelineResponse } from "@/lib/api";
+import { MatchCard } from "@/components/match-card";
 import { MemoryGraph } from "@/components/memory-graph";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -169,6 +170,8 @@ export default function Pipeline() {
           </CardContent>
         </Card>
       </div>
+
+      <MatchCard />
 
       <Card>
         <CardHeader>
