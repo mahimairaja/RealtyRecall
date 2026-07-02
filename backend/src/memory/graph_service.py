@@ -12,6 +12,7 @@ from typing import Any
 from cognee.infrastructure.databases.graph import get_graph_engine
 from cognee.modules.engine.models import NodeSet
 
+import src.memory.store as _store_module
 from src.memory.store import ensure_cognee, tenant_tag
 
 
@@ -68,6 +69,19 @@ class GraphService:
             if source in kept and target in kept:
                 edges.append({"source": source, "target": target, "rel": rel})
         return {"nodes": nodes, "edges": edges}
+
+    async def match_report(
+        self, tenant_id: str, listing: dict[str, Any]
+    ) -> dict[str, Any]:
+        store = _store_module.get_memory_store()
+        narrative = await store.match_buyers(tenant_id, listing)
+        buyers = await store.list_buyers(tenant_id)
+        named = [
+            {"name": b.get("name"), "phone": b.get("phone")}
+            for b in buyers
+            if b.get("name") and str(b["name"]).lower() in narrative.lower()
+        ]
+        return {"narrative": narrative, "buyers": named, "count": len(named)}
 
 
 _service: GraphService | None = None
