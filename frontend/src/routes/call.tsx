@@ -17,10 +17,11 @@ function CallShell() {
   return <SessionView onDisconnect={() => void session.end()} />;
 }
 
-export default function Call() {
+export default function Call({ embed = false }: { embed?: boolean }) {
   // A buyer reaches a realtor's assistant at /call/:tenantSlug (tenantSlug = the realtor's
   // org id). That tenant is baked into the room name so the agent scopes memory to this
-  // realtor. The bare /call route stays a no-tenant demo.
+  // realtor. The bare /call route stays a no-tenant demo. In embed mode the widget renders
+  // standalone (no public header), so it fills the whole iframe.
   const { tenantSlug } = useParams();
   const source = useMemo(
     () => (tenantSlug ? tokenSourceForTenant(tenantSlug) : tokenSource),
@@ -30,7 +31,7 @@ export default function Call() {
   return (
     <TooltipProvider>
       <AgentSessionProvider session={session}>
-        <main className="min-h-[calc(100svh-3.5rem)]">
+        <main className={embed ? "min-h-svh" : "min-h-[calc(100svh-3.5rem)]"}>
           <CallShell />
         </main>
       </AgentSessionProvider>
