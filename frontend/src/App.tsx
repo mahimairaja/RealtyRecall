@@ -42,6 +42,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Embed: chrome-less widget loaded in an iframe by public/embed.js on a realtor's
+            own site. Standalone (outside AppShell) so no console/marketing header shows. */}
+        <Route path="/embed/:tenantSlug" element={<Call embed />} />
+
         {/* Public: slim chrome */}
         <Route element={<AppShell />}>
           <Route path="/" element={<Landing />} />

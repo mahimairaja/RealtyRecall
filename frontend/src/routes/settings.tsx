@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useOrganization } from "@clerk/clerk-react";
-import { MessageSquare } from "lucide-react";
+import { Check, Code2, Copy, MessageSquare } from "lucide-react";
 import { getSettings, updateSettings } from "@/lib/api";
 import { CallLinkCard } from "@/components/app/call-link-card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,21 @@ export default function Settings() {
   const [smsTo, setSmsTo] = useState("");
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  const snippet = organization
+    ? `<script src="${window.location.origin}/embed.js" data-org="${organization.id}" async></script>`
+    : "";
+
+  async function copySnippet() {
+    try {
+      await navigator.clipboard.writeText(snippet);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard can be blocked (insecure context); the snippet stays visible to copy by hand.
+    }
+  }
 
   useEffect(() => {
     let active = true;
@@ -93,6 +108,37 @@ export default function Settings() {
           {status && <p className="text-sm text-muted-foreground">{status}</p>}
         </CardContent>
       </Card>
+
+      {organization && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Code2 className="size-4 text-primary" /> Embed on your site
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <p className="text-sm text-muted-foreground">
+              Paste this before &lt;/body&gt; on your website to add a floating
+              "Talk to us" button that opens your assistant.
+            </p>
+            <div className="flex items-start gap-2">
+              <code className="min-w-0 flex-1 overflow-x-auto rounded-md border border-border bg-card px-3 py-2 text-xs text-foreground">
+                {snippet}
+              </code>
+              <Button
+                size="sm"
+                variant="outline"
+                className="shrink-0"
+                onClick={() => void copySnippet()}
+                aria-label="Copy embed snippet"
+              >
+                {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+                {copied ? "Copied" : "Copy"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <CallLinkCard />
     </div>
