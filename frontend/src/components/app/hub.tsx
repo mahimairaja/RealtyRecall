@@ -29,9 +29,9 @@ const FEATURES = [
   {
     icon: CalendarCheck,
     title: "Never lose a lead",
-    body: "It books showings, texts you the lead, and remembers every buyer across calls.",
-    to: "/pipeline",
-    cta: "View pipeline",
+    body: "It books showings, texts you the lead, and keeps a live memory graph of every buyer across calls.",
+    to: "/overview",
+    cta: "View the memory graph",
   },
 ];
 

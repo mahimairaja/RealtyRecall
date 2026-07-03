@@ -8,7 +8,6 @@ import Buyers from "@/routes/buyers";
 import Call from "@/routes/call";
 import Listings from "@/routes/listings";
 import Overview from "@/routes/overview";
-import Pipeline from "@/routes/pipeline";
 import Settings from "@/routes/settings";
 
 // The realtor console requires a signed-in user (an active organization = the tenant is
@@ -64,7 +63,7 @@ export default function App() {
         >
           <Route path="/overview" element={<Overview />} />
           <Route path="/listings" element={<Listings />} />
-          <Route path="/pipeline" element={<Pipeline />} />
+          <Route path="/pipeline" element={<Navigate to="/overview" replace />} />
           <Route path="/buyers" element={<Buyers />} />
           <Route path="/settings" element={<Settings />} />
         </Route>

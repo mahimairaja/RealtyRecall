@@ -12,7 +12,6 @@ import {
   Menu,
   Settings,
   Users,
-  Waypoints,
   X,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/app/theme-toggle";
@@ -22,7 +21,6 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { to: "/overview", label: "Overview", icon: LayoutDashboard },
   { to: "/listings", label: "Listings", icon: Building2 },
-  { to: "/pipeline", label: "Pipeline", icon: Waypoints },
   { to: "/buyers", label: "Buyers", icon: Users },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
