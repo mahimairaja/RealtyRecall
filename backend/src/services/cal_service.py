@@ -9,7 +9,7 @@ transport makes the client testable with httpx.MockTransport (no network, no rea
 from __future__ import annotations
 
 import re
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -19,6 +19,23 @@ CAL_BASE_URL = "https://api.cal.com/v2"
 # Version-pinned; omitting these silently routes to an older, incompatible handler.
 CAL_API_VERSION_BOOKINGS = "2024-08-13"
 CAL_API_VERSION_SLOTS = "2024-09-04"
+
+
+def _to_utc_z(start_iso: str, tz_name: str) -> str:
+    """Coerce a booking start to UTC ``...Z``.
+
+    The assistant sometimes passes a naive local time (e.g. ``2026-07-06T09:00:00`` for "9 AM")
+    instead of the UTC ``startUtc`` from check_availability. cal.com then reads it as ~5 AM and
+    rejects it as unavailable. Interpret a naive value in the realtor's timezone; pass through a
+    value that already carries an offset. Best-effort: return the input unchanged if unparseable.
+    """
+    try:
+        dt = datetime.fromisoformat(start_iso.replace("Z", "+00:00"))
+    except ValueError:
+        return start_iso
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=ZoneInfo(tz_name))
+    return dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _to_e164(phone: str) -> str:
@@ -98,7 +115,7 @@ async def create_showing_booking(
     """Create a property-showing booking (books by phone). Returns confirmation fields."""
     payload = {
         "eventTypeId": event_type_id,
-        "start": start_utc_iso,
+        "start": _to_utc_z(start_utc_iso, attendee_timezone),
         "attendee": {
             "name": attendee_name,
             "phoneNumber": _to_e164(attendee_phone),
