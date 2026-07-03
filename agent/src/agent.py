@@ -84,11 +84,12 @@ async def entrypoint(ctx: JobContext) -> None:
         stt=deepgram.STT(model="nova-3"),
         llm=openai.LLM(model="gpt-4.1-mini"),
         # Gemini Flash TTS (reads GOOGLE_API_KEY from the environment). Swap voice_name for a
-        # different Gemini voice (e.g. Kore, Zephyr, Callirrhoe); see the plugin's voice list.
+        # different Gemini voice (e.g. Puck, Kore, Fenrir); the instructions set the pace, since
+        # GeminiTTS has no numeric speaking-rate parameter.
         tts=google.beta.GeminiTTS(
             model="gemini-2.5-flash-preview-tts",
-            voice_name="Aoede",
-            instructions="Speak in a warm, friendly, and relaxed tone.",
+            voice_name="Zephyr",
+            instructions="Speak quickly and energetically, with an upbeat, friendly, confident tone.",
         ),
         vad=ctx.proc.userdata["vad"],
         turn_handling=TurnHandlingOptions(
