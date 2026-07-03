@@ -89,3 +89,22 @@ def test_to_e164():
     assert cal_service._to_e164("(519) 555-0100") == "+15195550100"
     assert cal_service._to_e164("15195550100") == "+15195550100"
     assert cal_service._to_e164("+15195550100") == "+15195550100"
+
+
+def test_to_utc_z():
+    # A naive local time (what the assistant tends to send for "9 AM") is read in the realtor's
+    # timezone and converted to UTC, so cal.com sees the real slot. 9 AM EDT -> 13:00Z.
+    assert (
+        cal_service._to_utc_z("2026-07-06T09:00:00", "America/Toronto")
+        == "2026-07-06T13:00:00Z"
+    )
+    # An already-UTC value passes through unchanged.
+    assert (
+        cal_service._to_utc_z("2026-07-06T13:00:00Z", "America/Toronto")
+        == "2026-07-06T13:00:00Z"
+    )
+    # A value with an explicit offset is respected, not re-interpreted.
+    assert (
+        cal_service._to_utc_z("2026-07-06T09:00:00-04:00", "America/Toronto")
+        == "2026-07-06T13:00:00Z"
+    )
