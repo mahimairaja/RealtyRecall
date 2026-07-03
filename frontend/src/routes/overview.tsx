@@ -12,7 +12,7 @@ import {
   type RealtorProfile,
 } from "@/lib/api";
 import { CallLinkCard } from "@/components/app/call-link-card";
-import { MatchCard } from "@/components/app/match-card";
+import { MatchCard } from "@/components/match-card";
 import { MemorySection } from "@/components/app/memory-section";
 import { StorySection } from "@/components/app/story-section";
 import { Badge } from "@/components/ui/badge";

@@ -14,7 +14,7 @@ vi.mock("@/lib/api", () => ({
 vi.mock("@/components/app/memory-section", () => ({
   MemorySection: () => <div>memory-section</div>,
 }));
-vi.mock("@/components/app/match-card", () => ({ MatchCard: () => null }));
+vi.mock("@/components/match-card", () => ({ MatchCard: () => null }));
 vi.mock("@/components/app/call-link-card", () => ({ CallLinkCard: () => null }));
 vi.mock("@clerk/clerk-react", () => ({ useUser: () => ({ user: null }) }));
 
