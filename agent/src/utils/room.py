@@ -85,8 +85,8 @@ def identify(participant: rtc.Participant) -> Caller:
     """
     attrs = participant.attributes or {}
     sip_phone = attrs.get("sip.phoneNumber") or None
-    is_sip = (
-        participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP or bool(sip_phone)
+    is_sip = participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP or bool(
+        sip_phone
     )
     return Caller(
         kind="sip" if is_sip else "web",
