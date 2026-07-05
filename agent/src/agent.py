@@ -3,6 +3,7 @@ import os
 import sys
 
 import sentry_sdk
+import voicegateway
 from livekit.agents import (
     AgentServer,
     AgentSession,
@@ -94,6 +95,15 @@ async def entrypoint(ctx: JobContext) -> None:
             interruption={"mode": "vad"},
         ),
     )
+
+    # Observe this call with VoiceGateway: capture per-turn STT/LLM/TTS cost + latency and push it
+    # to the collector, attributed to this realtor (tenant) so each realtor's spend is tracked
+    # separately, under the "realty-recall" project. Best-effort: telemetry never breaks a call.
+    # (Per-realtor separation on the collector needs engine >= 0.11.1; see the PR notes.)
+    try:
+        voicegateway.attach(session, project="realty-recall", tenant_id=tenant_id)
+    except Exception:  # noqa: BLE001  (telemetry is best-effort)
+        logger.warning("voicegateway.attach failed", exc_info=True)
 
     # Read the realtor's synthesized persona so the assistant answers in their name and voice.
     # Best-effort: a missing tenant or a backend hiccup just falls back to the generic persona.
