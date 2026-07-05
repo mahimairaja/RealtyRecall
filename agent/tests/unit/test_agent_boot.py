@@ -1,11 +1,27 @@
-"""Boot smoke: the agent module imports and registers its server without a microphone,
-a LiveKit connection, or per-session provider init (those happen inside the entrypoint).
+"""Boot smoke: the agent module imports and builds its openrtc pool without a
+microphone, a LiveKit connection, or per-session provider init. Per-call setup
+(tenant, persona, caller, telemetry) now happens in RealtyAgent.on_enter.
 """
 
 import src.agent as agent_module
+from src.agents.agent_realty import RealtyAgent
 
 
 def test_agent_boots_as_realty():
     assert agent_module.config.AGENT_NAME == "realty"
-    assert agent_module.server is not None
-    assert agent_module.server.setup_fnc is agent_module.prewarm
+
+
+def test_build_pool_constructs_without_livekit():
+    # Building the pool wires the shared providers + registers the realty agent;
+    # it must not need a mic, a LiveKit connection, or an event loop.
+    pool = agent_module.build_pool()
+    assert pool is not None
+
+
+def test_realty_agent_is_arglessly_constructible():
+    # The AgentPool constructs one RealtyAgent per call with no arguments; the
+    # per-call context is filled in on_enter. So an arg-less construction must work.
+    agent = RealtyAgent()
+    assert agent is not None
+    # on_enter / on_exit are the per-call lifecycle hooks the pool drives.
+    assert hasattr(agent, "on_enter") and hasattr(agent, "on_exit")

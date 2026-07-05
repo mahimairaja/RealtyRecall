@@ -15,11 +15,15 @@ import re
 import uuid
 from typing import Any
 
+import voicegateway
 from livekit.agents import Agent, RunContext, function_tool, get_job_context
 
 from src.core.config import config
+from src.core.events import register_event_handlers
 from src.prompts.instructions import _clean, realtor_instructions
+from src.runtime.observers import post_call_log
 from src.services.api_client import BackendApiClient
+from src.utils.room import identify, resolve_tenant_id
 
 logger = logging.getLogger("agent")
 
@@ -129,6 +133,8 @@ class RealtyAgent(Agent):
         self._catalog: list[dict[str, Any]] | None = None
         # Detached UI-push tasks (held so they are not garbage-collected mid-flight).
         self._bg: set[asyncio.Task[Any]] = set()
+        # Set in on_enter (per call): the usage-summary logger from register_event_handlers.
+        self._log_usage_summary = None
 
     def _fire(self, coro: Any) -> None:
         """Run a UI push in the background so it never adds latency to the voice turn (a slow
@@ -189,6 +195,9 @@ class RealtyAgent(Agent):
         return summary[:600] or None
 
     async def on_enter(self) -> None:
+        # Per-call setup, moved here from the old entrypoint: the AgentPool uses one
+        # universal entrypoint, so each call resolves its own realtor post-connect.
+        await self._resolve_call_context()
         # Cap call length so a stuck or abusive session cannot run up STT/LLM/TTS cost.
         self._max_call_task = asyncio.create_task(self._hang_up_max_duration())
         # A SIP caller's number is known at connect, so we can recognize a returning buyer
@@ -198,6 +207,66 @@ class RealtyAgent(Agent):
         self.session.generate_reply(
             instructions=_RECORDING_NOTICE + self._opener(recalled)
         )
+
+    async def _resolve_call_context(self) -> None:
+        """Resolve the realtor (tenant), caller, persona, and telemetry for this call.
+
+        Runs once at the start of every call; was the entrypoint's job before the
+        AgentPool migration. Every step is best-effort so a backend hiccup or an odd
+        room never blocks the greeting.
+        """
+        ctx = get_job_context()
+        room = ctx.room
+        self._tenant_id = resolve_tenant_id(
+            room.name,
+            getattr(ctx.job, "metadata", None),
+            getattr(room, "metadata", None),
+        )
+        if not self._tenant_id:
+            logger.warning("room %s has no tenant; memory tools unavailable", room.name)
+        self._api = BackendApiClient(tenant_id=self._tenant_id)
+
+        # Identify the caller. A SIP caller's number is known now (caller ID); a web
+        # caller's is learned when they state it. linked_participant is None in console
+        # mode or before a caller joins, so guard it.
+        participant = self.session.room_io.linked_participant
+        if participant is not None:
+            caller = identify(participant)
+            self.last_phone = caller.phone
+            logger.info(
+                "participant joined: kind=%s identity=%s", caller.kind, caller.identity
+            )
+
+        # The realtor's synthesized persona so the assistant answers in their name/voice.
+        if self._tenant_id:
+            try:
+                persona = await self._api.get_realtor()
+                self._persona = persona or {}
+                self._realtor = self._persona.get("name") or config.AGENT_NAME
+                await self.update_instructions(realtor_instructions(persona))
+            except Exception as exc:  # noqa: BLE001  (persona is best-effort)
+                logger.warning("realtor persona fetch failed: %s", exc)
+
+        # Observe this call with VoiceGateway: per-turn STT/LLM/TTS cost + latency,
+        # attributed to this realtor (tenant) under the realty-recall project.
+        try:
+            voicegateway.attach(
+                self.session, project="realty-recall", tenant_id=self._tenant_id
+            )
+        except Exception:  # noqa: BLE001  (telemetry is best-effort)
+            logger.warning("voicegateway.attach failed", exc_info=True)
+
+        self._log_usage_summary = register_event_handlers(self.session)
+
+    async def on_exit(self) -> None:
+        # Per-call teardown (was the entrypoint's shutdown callback): log the usage
+        # summary, then persist the call log and fold the conversation into memory.
+        if self._log_usage_summary is not None:
+            self._log_usage_summary()
+        if self._api is not None:
+            await post_call_log(
+                self._api, get_job_context().room.name, buyer_phone=self.last_phone
+            )
 
     async def _hang_up_max_duration(self) -> None:
         try:
