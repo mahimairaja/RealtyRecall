@@ -3,7 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { RedirectToSignIn, SignedIn, SignedOut } from "@clerk/clerk-react";
 import { AppShell } from "@/components/app/app-shell";
 import { DashboardShell } from "@/components/app/dashboard-shell";
-import Hub from "@/components/app/hub";
+import LandingPage from "@/components/marketing/landing-page";
 import Buyers from "@/routes/buyers";
 import Call from "@/routes/call";
 import Listings from "@/routes/listings";
@@ -31,7 +31,7 @@ function Landing() {
         <Navigate to="/overview" replace />
       </SignedIn>
       <SignedOut>
-        <Hub />
+        <LandingPage />
       </SignedOut>
     </>
   );
