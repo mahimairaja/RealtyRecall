@@ -251,7 +251,10 @@ class RealtyAgent(Agent):
         # attributed to this realtor (tenant) under the realty-recall project.
         try:
             voicegateway.attach(
-                self.session, project="realty-recall", tenant_id=self._tenant_id
+                self.session,
+                project="realty-recall",
+                agent_id=config.AGENT_NAME,
+                tenant_id=self._tenant_id,
             )
         except Exception:  # noqa: BLE001  (telemetry is best-effort)
             logger.warning("voicegateway.attach failed", exc_info=True)
