@@ -5,6 +5,18 @@ from src.prompts.instructions import (
 )
 
 
+def test_base_prompt_does_not_re_greet():
+    # The spoken opener (RealtyAgent.on_enter) owns the greeting + PIPEDA recording
+    # notice. The persistent system prompt must NOT also instruct a greeting, or the
+    # model greets a second time (recording notice and all) on the caller's first
+    # turn. Regression guard for the observed double greeting.
+    low = REALTOR_INSTRUCTIONS.lower()
+    assert "do not greet again" in low
+    assert (
+        "greet the buyer warmly and let them know the call may be recorded" not in low
+    )
+
+
 def test_clean_collapses_whitespace_and_caps_length():
     assert _clean("warm\n\nlocal   pro") == "warm local pro"
     assert _clean(None) is None
