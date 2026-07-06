@@ -1,3 +1,4 @@
+import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
@@ -6,6 +7,45 @@ from src.core.clerk import get_current_tenant
 from src.core.tenant import get_agent_tenant_id
 
 TENANT = "org_buyers_test"
+
+
+class _Prof:
+    def __init__(self, name=None, budget=None, area=None, prefs_summary=None) -> None:
+        self.name = name
+        self.budget = budget
+        self.area = area
+        self.prefs_summary = prefs_summary
+
+
+class _FakeProfileRepo:
+    def __init__(self) -> None:
+        self.upserts: list[dict] = []
+        self.stored: dict[tuple[str, str], _Prof] = {}
+
+    async def upsert(
+        self, tenant_id, phone, *, name=None, area=None, budget=None, prefs_summary=None
+    ):
+        self.upserts.append(
+            {
+                "tenant_id": tenant_id,
+                "phone": phone,
+                "name": name,
+                "area": area,
+                "budget": budget,
+                "prefs_summary": prefs_summary,
+            }
+        )
+
+    async def get(self, tenant_id, phone):
+        return self.stored.get((tenant_id, phone))
+
+
+@pytest.fixture(autouse=True)
+def profile_repo(monkeypatch):
+    """Stub the fast profile repo for every test so the dual-write never hits a DB."""
+    repo = _FakeProfileRepo()
+    monkeypatch.setattr(buyers_mod, "buyer_profile_repository", repo)
+    return repo
 
 
 class _FakeStore:
@@ -134,3 +174,34 @@ async def test_list_buyers_is_console_scoped(monkeypatch):
     assert body[0]["name"] == "Dana"
     assert body[0]["criteria"]["area"] == "Sarnia"
     assert seen["tenant"] == "org_console"
+
+
+async def test_upsert_also_writes_the_fast_profile(monkeypatch, profile_repo):
+    async with _client(monkeypatch, _FakeStore()) as c:
+        resp = await c.post(
+            "/api/v1/buyers",
+            json={
+                "phone": "+15195550100",
+                "name": "Dana",
+                "criteria": {"area": "Sarnia", "minBeds": 3, "maxPrice": 480000},
+            },
+        )
+    assert resp.status_code == 201
+    row = profile_repo.upserts[0]
+    assert row["tenant_id"] == TENANT and row["phone"] == "+15195550100"
+    assert (
+        row["name"] == "Dana" and row["area"] == "Sarnia" and row["budget"] == "480000"
+    )
+    assert "3+ beds" in row["prefs_summary"] and "Sarnia" in row["prefs_summary"]
+
+
+async def test_get_buyer_profile_found_and_missing(monkeypatch, profile_repo):
+    profile_repo.stored[(TENANT, "+15195550100")] = _Prof(
+        name="Dana", area="Sarnia", prefs_summary="3+ beds, in Sarnia"
+    )
+    async with _client(monkeypatch, _FakeStore()) as c:
+        found = await c.get("/api/v1/buyers/+15195550100/profile")
+        missing = await c.get("/api/v1/buyers/+19999999999/profile")
+    assert found.status_code == 200 and found.json()["found"] is True
+    assert found.json()["name"] == "Dana" and found.json()["prefs_summary"]
+    assert missing.json()["found"] is False and missing.json()["name"] is None
