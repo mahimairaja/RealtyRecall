@@ -9,6 +9,8 @@ vi.mock("@/lib/api", () => ({
   getLiveListings: () => Promise.resolve([]),
   getPipeline: () => Promise.resolve({ bookings: [], calls: [] }),
   getBuyers: () => Promise.resolve([]),
+  // The Overview renders <UsageWidget/>, which calls getEmbedToken() on mount.
+  getEmbedToken: () => Promise.resolve({ token: "test-token" }),
 }));
 // Mock the memory chapter so the canvas-based graph never renders in jsdom.
 vi.mock("@/components/app/memory-section", () => ({

@@ -91,7 +91,9 @@ def install() -> None:
             _install_litellm_callback()
             logger.info("VoiceGateway backend telemetry enabled (project=%s)", _PROJECT)
     except Exception:  # noqa: BLE001 - telemetry never blocks startup
-        logger.warning("VoiceGateway telemetry install failed; continuing", exc_info=True)
+        logger.warning(
+            "VoiceGateway telemetry install failed; continuing", exc_info=True
+        )
 
 
 async def aclose() -> None:
