@@ -189,17 +189,18 @@ class RealtyAgent(Agent):
             return None
         self._recalled = True
         try:
-            data = await self._api.get_buyer(self.last_phone)
+            # The FAST structured profile (a direct row read), not the slow Cognee graph
+            # recall, so recognizing a returning buyer never blocks the greeting (#3).
+            profile = await self._api.get_buyer_profile(self.last_phone)
         except Exception as exc:  # noqa: BLE001  (recall is best-effort; never break the call)
             logger.warning("buyer recall failed: %s", exc)
             return None
-        if not data.get("found"):
+        if not profile.get("found"):
             return None
-        summary = str(data.get("summary") or "").strip()
-        nearby = str(data.get("nearby") or "").strip()
-        if nearby:
-            summary = f"{summary} Also worth mentioning: {nearby}".strip()
-        return summary[:600] or None
+        name = str(profile.get("name") or "").strip()
+        prefs = str(profile.get("prefs_summary") or "").strip()
+        remembered = ". ".join(p for p in (name, prefs) if p)
+        return remembered[:600] or None
 
     async def on_enter(self) -> None:
         # Per-call setup, moved here from the old entrypoint: the AgentPool uses one
