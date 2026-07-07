@@ -111,6 +111,13 @@ class BackendApiClient:
         """
         return await self._get(f"/api/v1/buyers/{quote(phone, safe='')}")
 
+    async def get_buyer_profile(self, phone: str) -> dict[str, Any]:
+        """The FAST structured profile (a direct row read, not Cognee): {"found": bool,
+        "name", "budget", "area", "prefs_summary"}. Read at call start so a returning
+        buyer is recognized without blocking the greeting on the 10-20s graph recall.
+        """
+        return await self._get(f"/api/v1/buyers/{quote(phone, safe='')}/profile")
+
     async def check_availability(self) -> dict[str, Any]:
         """Open showing times on the realtor's calendar."""
         return await self._get("/api/v1/availability")

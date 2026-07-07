@@ -143,6 +143,23 @@ async def test_get_buyer_url_encodes_the_phone():
     )
 
 
+async def test_get_buyer_profile_hits_the_fast_endpoint():
+    seen: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["path"] = request.url.path
+        return httpx.Response(
+            200, json={"found": True, "name": "Dana", "prefs_summary": "3+ beds"}
+        )
+
+    client = BackendApiClient(
+        base_url="http://test", transport=httpx.MockTransport(handler)
+    )
+    out = await client.get_buyer_profile("+15195550100")
+    assert seen["path"] == "/api/v1/buyers/+15195550100/profile"
+    assert out["found"] is True and out["name"] == "Dana"
+
+
 async def test_lead_availability_booking_routes():
     seen: list = []
 

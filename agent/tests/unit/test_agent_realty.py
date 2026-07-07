@@ -22,15 +22,18 @@ class _FakeApi:
         raises: bool = False,
         catalog: list[dict] | None = None,
         buyer: dict | None = None,
+        profile: dict | None = None,
         availability: dict | None = None,
     ) -> None:
         self.answer = answer
         self.raises = raises
         self.catalog = catalog or []
         self.buyer = buyer or {"found": False}
+        self.profile = profile or {"found": False}
         self.availability = availability or {"days": []}
         self.calls: list[tuple[str, str]] = []
         self.get_buyer_calls: list[str] = []
+        self.get_buyer_profile_calls: list[str] = []
         self.booking_calls: list[dict] = []
 
     async def check_availability(self) -> dict:
@@ -55,6 +58,12 @@ class _FakeApi:
     async def get_buyer(self, phone: str) -> dict:
         self.get_buyer_calls.append(phone)
         return self.buyer
+
+    async def get_buyer_profile(self, phone: str) -> dict:
+        self.get_buyer_profile_calls.append(phone)
+        if self.raises:
+            raise RuntimeError("backend down")
+        return self.profile
 
 
 def test_instructions_cover_disclosure_and_qualification():
@@ -108,7 +117,9 @@ def test_format_listings_answer_counts_prices_and_overflow():
     out = _format_listings_answer(homes, total=7)
     assert out.startswith("I have 7 listings")
     assert "$500,000" in out  # grounded, formatted price
-    assert "2 more" in out  # 7 matched, 5 named, 2 more offered
+    assert (
+        "all 7 on your screen" in out
+    )  # 7 matched, 6 named, the rest pushed to screen
 
 
 def test_format_listings_answer_subset_missing_price_and_empty():
@@ -187,64 +198,62 @@ async def test_sip_caller_phone_seeds_last_phone():
 
 
 async def test_recall_returning_buyer_and_opener():
+    # #3: recall reads the FAST profile row (name + prefs_summary), not Cognee.
     api = _FakeApi(
-        buyer={"found": True, "summary": "Dana wants a 3-bed in Sarnia under 470k"}
+        profile={
+            "found": True,
+            "name": "Dana",
+            "prefs_summary": "3+ beds, under $470,000 in Sarnia",
+        }
     )
     agent = RealtyAgent(api=api, caller_phone="+15195550142")
     recalled = await agent._recall_returning_buyer()
-    assert recalled and "Dana" in recalled
-    assert api.get_buyer_calls == ["+15195550142"]
+    assert recalled and "Dana" in recalled and "3+ beds" in recalled
+    assert api.get_buyer_profile_calls == ["+15195550142"]
     opener = agent._opener(recalled)
     assert "returning caller" in opener.lower()
     assert "Dana" in opener
 
 
 async def test_recall_is_once_per_call():
-    api = _FakeApi(buyer={"found": True, "summary": "x"})
+    api = _FakeApi(profile={"found": True, "name": "Dana"})
     agent = RealtyAgent(api=api, caller_phone="+15195550142")
     assert await agent._recall_returning_buyer() is not None
     assert (
         await agent._recall_returning_buyer() is None
     )  # already recalled; no second lookup
-    assert api.get_buyer_calls == ["+15195550142"]
+    assert api.get_buyer_profile_calls == ["+15195550142"]
 
 
 async def test_recall_rejects_a_non_phone():
     # A garbage/path-traversal value from an LLM arg never reaches the backend.
-    api = _FakeApi(buyer={"found": True, "summary": "x"})
+    api = _FakeApi(profile={"found": True, "name": "Dana"})
     for bad in ("../admin", "abc", "12", "+1"):
         agent = RealtyAgent(api=api, caller_phone=bad)
         assert await agent._recall_returning_buyer() is None
-    assert api.get_buyer_calls == []
+    assert api.get_buyer_profile_calls == []
 
 
 async def test_no_recall_without_a_phone():
-    api = _FakeApi(buyer={"found": True, "summary": "x"})
+    api = _FakeApi(profile={"found": True, "name": "Dana"})
     agent = RealtyAgent(api=api)  # web: no caller id yet
     assert await agent._recall_returning_buyer() is None
-    assert api.get_buyer_calls == []
+    assert api.get_buyer_profile_calls == []
 
 
 async def test_recall_degrades_when_backend_errors():
-    class _Boom(_FakeApi):
-        async def get_buyer(self, phone: str) -> dict:
-            raise RuntimeError("backend down")
-
-    agent = RealtyAgent(api=_Boom(), caller_phone="+15195550142")
-    assert await agent._recall_returning_buyer() is None  # never raises into the call
+    # raises=True makes get_buyer_profile throw; recall swallows it, never breaks the call.
+    agent = RealtyAgent(api=_FakeApi(raises=True), caller_phone="+15195550142")
+    assert await agent._recall_returning_buyer() is None
 
 
-async def test_recall_appends_nearby_suggestion():
-    api = _FakeApi(
-        buyer={
-            "found": True,
-            "summary": "Dana wants a 3-bed in Sarnia",
-            "nearby": "A new one on Cathcart just came up two streets over.",
-        }
-    )
+async def test_recall_uses_name_and_prefs_but_not_cognee_nearby():
+    # The fast profile has no Cognee "nearby" field; recall is built from the row only.
+    api = _FakeApi(profile={"found": True, "name": "Dana", "prefs_summary": ""})
     agent = RealtyAgent(api=api, caller_phone="+15195550142")
     recalled = await agent._recall_returning_buyer()
-    assert recalled and "Cathcart" in recalled
+    assert recalled == "Dana"
+    assert api.get_buyer_calls == []  # the slow Cognee recall is off the greeting path
 
 
 class _FakeCtx:

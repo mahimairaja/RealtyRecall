@@ -67,7 +67,7 @@ def _format_listings_answer(matches: list[dict[str, Any]], total: int) -> str:
         p = h.get("price")
         return f"${int(p):,}" if isinstance(p, int | float) else "price on request"
 
-    shown = matches[:5]
+    shown = matches[:6]
     parts = []
     for h in shown:
         beds = h.get("beds")
@@ -82,7 +82,7 @@ def _format_listings_answer(matches: list[dict[str, Any]], total: int) -> str:
     else:
         head = "I found one that fits" if count == 1 else f"I found {count} that fit"
     tail = (
-        f" There are {count - len(shown)} more I can go through."
+        f" I've put all {count} on your screen. Which would you like to hear more about?"
         if count > len(shown)
         else ""
     )
@@ -189,17 +189,18 @@ class RealtyAgent(Agent):
             return None
         self._recalled = True
         try:
-            data = await self._api.get_buyer(self.last_phone)
+            # The FAST structured profile (a direct row read), not the slow Cognee graph
+            # recall, so recognizing a returning buyer never blocks the greeting (#3).
+            profile = await self._api.get_buyer_profile(self.last_phone)
         except Exception as exc:  # noqa: BLE001  (recall is best-effort; never break the call)
             logger.warning("buyer recall failed: %s", exc)
             return None
-        if not data.get("found"):
+        if not profile.get("found"):
             return None
-        summary = str(data.get("summary") or "").strip()
-        nearby = str(data.get("nearby") or "").strip()
-        if nearby:
-            summary = f"{summary} Also worth mentioning: {nearby}".strip()
-        return summary[:600] or None
+        name = str(profile.get("name") or "").strip()
+        prefs = str(profile.get("prefs_summary") or "").strip()
+        remembered = ". ".join(p for p in (name, prefs) if p)
+        return remembered[:600] or None
 
     async def on_enter(self) -> None:
         # Per-call setup, moved here from the old entrypoint: the AgentPool uses one
@@ -503,10 +504,16 @@ class RealtyAgent(Agent):
         self._offered_slots = {
             s["startUtc"] for d in days for s in d.get("slots", []) if s.get("startUtc")
         }
-        lines = [
-            f"{d['date']}: {', '.join(s['label'] for s in d['slots'])}" for d in days
-        ]
-        return "Open showing times, offer only these:\n" + "\n".join(lines)
+        lines = []
+        for d in days:
+            slots = [s for s in d.get("slots", []) if s.get("startUtc")]
+            offered = ", ".join(f"{s['label']} (id {s['startUtc']})" for s in slots)
+            lines.append(f"{d['date']}: {offered}")
+        return (
+            "Open showing times. Offer only these. When the caller picks one, call "
+            "book_showing with the exact id shown in parentheses; never build the "
+            "timestamp yourself.\n" + "\n".join(lines)
+        )
 
     @function_tool
     @traced_tool
@@ -518,8 +525,9 @@ class RealtyAgent(Agent):
         name: str,
         phone: str,
     ) -> str:
-        """Book an in-person showing for a home at a chosen time. start_utc is one of the
-        startUtc values from check_availability.
+        """Book an in-person showing for a home at a chosen time. start_utc must be the
+        exact id shown in parentheses next to the chosen time by check_availability
+        (copy it verbatim; do not construct the timestamp from the spoken time).
         """
         # Guard against a hallucinated or misheard time: only book a slot that
         # check_availability actually offered this call. An empty set means the model
