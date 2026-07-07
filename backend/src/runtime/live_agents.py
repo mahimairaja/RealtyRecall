@@ -71,7 +71,9 @@ class LiveAgentRegistry:
 
     def _sweep(self) -> None:
         cutoff = self._now() - self._ttl
-        stale = [k for k, s in self._calls.items() if s.updated_at < cutoff]
+        # Sweep a call once it has gone at or past the TTL without an update (<=), so a call
+        # aged exactly ttl seconds is dropped rather than lingering one more sweep cycle.
+        stale = [k for k, s in self._calls.items() if s.updated_at <= cutoff]
         for k in stale:
             del self._calls[k]
 
