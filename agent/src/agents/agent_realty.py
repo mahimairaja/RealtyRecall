@@ -28,6 +28,7 @@ from src.agents.listing_filters import (
 )
 from src.core.config import config
 from src.core.events import register_event_handlers
+from src.core.tool_tracing import traced_tool
 from src.prompts.instructions import _clean, realtor_instructions
 from src.runtime.observers import post_call_log
 from src.services.api_client import BackendApiClient
@@ -375,6 +376,7 @@ class RealtyAgent(Agent):
         await self._push_event("shortlist", {"criteria": label, "matches": matches})
 
     @function_tool
+    @traced_tool
     async def search_listings(
         self,
         context: RunContext,
@@ -411,6 +413,7 @@ class RealtyAgent(Agent):
         return answer
 
     @function_tool
+    @traced_tool
     async def show_home(self, context: RunContext, home: str) -> str:
         """Pull ONE specific home up on the buyer's screen with its photo and full details.
         Call this whenever the buyer asks about a particular home or you are describing one in
@@ -431,6 +434,7 @@ class RealtyAgent(Agent):
         )
 
     @function_tool
+    @traced_tool
     async def capture_lead(
         self,
         context: RunContext,
@@ -478,6 +482,7 @@ class RealtyAgent(Agent):
         return f"Thanks{', ' + name if name else ''}. I have your details."
 
     @function_tool
+    @traced_tool
     async def check_availability(self, context: RunContext) -> str:
         """Look up open showing times on the realtor's calendar. Offer only these times."""
         try:
@@ -504,6 +509,7 @@ class RealtyAgent(Agent):
         return "Open showing times, offer only these:\n" + "\n".join(lines)
 
     @function_tool
+    @traced_tool
     async def book_showing(
         self,
         context: RunContext,
@@ -573,6 +579,7 @@ class RealtyAgent(Agent):
         return "That time did not work out. Want me to check other times?"
 
     @function_tool
+    @traced_tool
     async def forget_me(self, context: RunContext) -> str:
         """Forget everything we remember about THIS caller, at their request, and confirm.
 
