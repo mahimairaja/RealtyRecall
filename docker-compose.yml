@@ -1,4 +1,4 @@
-# One-command local stack for RealtyRecall.
+# One-command local stack for Super Realty.
 # Quickest start: `make up` (bootstraps .env, builds, seeds, prints URLs).
 
 services:

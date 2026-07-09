@@ -1,4 +1,4 @@
-const COLS = ["RealtyRecall", "Aira", "Callium", "Structurely"];
+const COLS = ["Super Realty", "Aira", "Callium", "Structurely"];
 
 // Each row: label plus one cell per column in COLS order. `star` highlights the
 // differentiator row. Roadmap items are labelled honestly, never claimed.
@@ -33,7 +33,7 @@ export function Comparison() {
   return (
     <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
       <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-        How RealtyRecall compares.
+        How Super Realty compares.
       </h2>
       <div className="mt-8 overflow-x-auto rounded-xl border border-border">
         <table className="w-full min-w-[640px] border-collapse text-sm">
@@ -47,7 +47,7 @@ export function Comparison() {
                   key={c}
                   scope="col"
                   className={
-                    c === "RealtyRecall"
+                    c === "Super Realty"
                       ? "p-3 text-left font-semibold text-primary"
                       : "p-3 text-left font-medium text-muted-foreground"
                   }

@@ -1,6 +1,6 @@
 {
   "dispatch_rule": {
-    "name": "RealtyRecall inbound -> realty agent (org_REPLACE_ME)",
+    "name": "Super Realty inbound -> realty agent (org_REPLACE_ME)",
     "trunk_ids": ["ST_REPLACE_WITH_INBOUND_TRUNK_ID"],
     "rule": {
       "dispatchRuleIndividual": {

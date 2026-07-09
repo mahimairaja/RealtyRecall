@@ -18,7 +18,7 @@ export function Hero() {
           <span className="text-primary">Never forget a buyer.</span>
         </h1>
         <p className="max-w-xl text-base text-muted-foreground sm:text-lg">
-          RealtyRecall is the always-on receptionist for solo agents. It picks up
+          Super Realty is the always-on receptionist for solo agents. It picks up
           every call, qualifies the buyer, books the showing, and remembers every
           caller across calls. Live from your website URL in minutes.
         </p>

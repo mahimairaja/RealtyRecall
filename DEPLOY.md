@@ -1,4 +1,4 @@
-# Deploying RealtyRecall
+# Deploying Super Realty
 
 Three services, continuously deployed from `main`:
 
