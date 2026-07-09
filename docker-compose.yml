@@ -108,6 +108,8 @@ services:
       args:
         VITE_TOKEN_ENDPOINT: ${VITE_TOKEN_ENDPOINT:-http://localhost:8000/api/v1/token}
         VITE_AGENT_NAME: ${VITE_AGENT_NAME:-realty}
+        # Required for the realtor console (Clerk auth). Set VITE_CLERK_PUBLISHABLE_KEY in .env.
+        VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY:-}
     ports:
       - "5173:80" # http://localhost:5173
     depends_on:
