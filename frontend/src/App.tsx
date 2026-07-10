@@ -4,6 +4,7 @@ import { RedirectToSignIn, SignedIn, SignedOut } from "@clerk/clerk-react";
 import { AppShell } from "@/components/app/app-shell";
 import { DashboardShell } from "@/components/app/dashboard-shell";
 import LandingPage from "@/components/marketing/landing-page";
+import Agents from "@/routes/agents";
 import Buyers from "@/routes/buyers";
 import Call from "@/routes/call";
 import Listings from "@/routes/listings";
@@ -65,6 +66,7 @@ export default function App() {
           <Route path="/listings" element={<Listings />} />
           <Route path="/pipeline" element={<Navigate to="/overview" replace />} />
           <Route path="/buyers" element={<Buyers />} />
+          <Route path="/agents" element={<Agents />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
 
