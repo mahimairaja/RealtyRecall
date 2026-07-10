@@ -10,6 +10,7 @@ import {
   Building2,
   LayoutDashboard,
   Menu,
+  Network,
   Settings,
   Users,
   X,
@@ -22,6 +23,7 @@ const NAV = [
   { to: "/overview", label: "Overview", icon: LayoutDashboard },
   { to: "/listings", label: "Listings", icon: Building2 },
   { to: "/buyers", label: "Buyers", icon: Users },
+  { to: "/agents", label: "Super Agents", icon: Network },
   { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
