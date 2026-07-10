@@ -7,7 +7,7 @@ export const API_BASE = TOKEN_ENDPOINT.replace(/\/token$/, "");
 
 // Console requests carry the Clerk session JWT; the backend resolves the tenant from it.
 // The public buyer call widget (token-source) stays unauthenticated.
-async function authHeaders(): Promise<Record<string, string>> {
+export async function authHeaders(): Promise<Record<string, string>> {
   const clerk = (
     window as unknown as {
       Clerk?: { session?: { getToken: () => Promise<string | null> } };
