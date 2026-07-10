@@ -10,8 +10,13 @@ COPY . .
 # Vite bakes env at build time; the browser calls the backend on the host.
 ARG VITE_TOKEN_ENDPOINT=http://localhost:8000/api/v1/token
 ARG VITE_AGENT_NAME=assistant
+# Clerk publishable key. The signed-in realtor console (overview, listings,
+# buyers, settings) needs it; themed-clerk-provider.tsx throws at runtime if it
+# is missing, blanking the whole app. Passed through from docker-compose args.
+ARG VITE_CLERK_PUBLISHABLE_KEY=
 ENV VITE_TOKEN_ENDPOINT=$VITE_TOKEN_ENDPOINT
 ENV VITE_AGENT_NAME=$VITE_AGENT_NAME
+ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
 RUN pnpm build
 
 # ---- serve ----
