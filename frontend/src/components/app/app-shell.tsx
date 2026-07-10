@@ -15,7 +15,7 @@ export function AppShell() {
           <NavLink to="/" className="flex items-center gap-2">
             <img src="/brand-mark.svg" alt="" className="h-6 w-6" />
             <span className="text-[15px] font-semibold tracking-tight">
-              Realty<span className="text-primary">Recall</span>
+              Super<span className="text-primary">Realty</span>
             </span>
           </NavLink>
           <div className="ml-auto flex items-center gap-2">

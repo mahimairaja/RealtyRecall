@@ -70,7 +70,7 @@ export function SmsPhone({
   const [side, setSide] = useState<Side>("realtor");
   const messages =
     side === "realtor" ? realtorMessages(lead, booking) : buyerMessages(lead, booking);
-  const contact = side === "realtor" ? "Your realtor line" : "RealtyRecall";
+  const contact = side === "realtor" ? "Your realtor line" : "Super Realty";
 
   return (
     <div className="mx-auto w-full max-w-[260px]">

@@ -42,7 +42,7 @@ function FirstRun() {
       <div className="flex items-center gap-2">
         <img src="/brand-mark.svg" alt="" className="h-7 w-7" />
         <span className="text-lg font-semibold tracking-tight">
-          Realty<span className="text-primary">Recall</span>
+          Super<span className="text-primary">Realty</span>
         </span>
       </div>
       <div className="max-w-md space-y-2 text-center">
@@ -83,7 +83,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
       >
         <img src="/brand-mark.svg" alt="" className="h-6 w-6" />
         <span className="text-[15px] font-semibold tracking-tight">
-          Realty<span className="text-sidebar-primary">Recall</span>
+          Super<span className="text-sidebar-primary">Realty</span>
         </span>
       </NavLink>
 

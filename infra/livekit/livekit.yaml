@@ -1,4 +1,4 @@
-# Local-dev LiveKit server for the RealtyRecall docker compose stack.
+# Local-dev LiveKit server for the Super Realty docker compose stack.
 #
 # ICE-over-TCP (rtc.tcp_port) is enabled so a browser on the host can reach the
 # containerized server reliably. UDP through Docker NAT is unreliable, especially

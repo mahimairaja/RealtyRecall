@@ -92,7 +92,7 @@ export function Pricing() {
         Overage: $0.25 / $0.20 / $0.15 per minute.
       </p>
       <p className="mt-2 text-center text-sm font-medium text-foreground">
-        Structurely: $499/mo plus $2,500 setup. RealtyRecall Pro: $597/mo, $0 setup.
+        Structurely: $499/mo plus $2,500 setup. Super Realty Pro: $597/mo, $0 setup.
       </p>
     </section>
   );

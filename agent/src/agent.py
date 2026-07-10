@@ -76,7 +76,7 @@ def build_pool() -> AgentPool:
         ),
         # Per-tenant provider config / caps / circuit breaker are intentionally
         # NOT set: openrtc keys those on the dispatch ``tenant`` metadata, which
-        # RealtyRecall does not emit today (the realtor is in the room NAME,
+        # Super Realty does not emit today (the realtor is in the room NAME,
         # t_{tenant}_{random}). Enabling the breaker without it would key every
         # call to "default" and could trip the whole fleet on a transient blip.
         # Per-tenant provider tiers also assume a static tenant set, which does
