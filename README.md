@@ -27,8 +27,8 @@ Every missed call is a missed commission: buyers dial the agent who answers firs
 There is no hosted demo. Run the whole stack yourself in one command:
 
 ```bash
-git clone https://github.com/mahimairaja/realtyrecall.git
-cd realtyrecall
+git clone https://github.com/mahimairaja/superrealty.git
+cd superrealty
 make up
 ```
 
