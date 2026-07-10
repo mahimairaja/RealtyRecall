@@ -1,4 +1,5 @@
-# One-command local stack for RealtyRecall
+# One-command local stack for RealtyRecall.
+# Quickest start: `make up` (bootstraps .env, builds, seeds, prints URLs).
 
 services:
   db:
@@ -40,11 +41,30 @@ services:
       retries: 15
       start_period: 30s
 
+  # Bundled LiveKit server so the browser voice call works locally without
+  # LiveKit Cloud. ICE-over-TCP is configured in infra/livekit/livekit.yaml for
+  # reliable host-to-container media (UDP through Docker NAT is flaky on macOS).
+  livekit:
+    image: livekit/livekit-server:latest
+    command: ["--config", "/etc/livekit.yaml"]
+    volumes:
+      - ./infra/livekit/livekit.yaml:/etc/livekit.yaml:ro
+    ports:
+      - "7880:7880" # signaling (ws) + http
+      - "7881:7881" # ICE over TCP
+      - "50000-50020:50000-50020/udp" # ICE over UDP (Linux; TCP is the fallback)
+    restart: unless-stopped
+
   backend:
     build: ./backend
+    image: realtyrecall-backend
     env_file: .env
     environment:
       PORT: 8080
+      # The browser connects to LiveKit at this URL (TokenService returns it as
+      # server_url), so it must be host-reachable: localhost, not the internal
+      # docker hostname the agent uses.
+      LIVEKIT_URL: ws://localhost:7880
     volumes:
       # Persist Cognee's local artifacts (datasets, cache) across restarts.
       - cogneedata:/app/.cognee_system
@@ -56,13 +76,30 @@ services:
         condition: service_healthy
       neo4j:
         condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=3)\" || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
     restart: unless-stopped
 
   agent:
     build: ./agent
     env_file: .env
+    environment:
+      # The worker reaches the bundled LiveKit over the internal docker network.
+      # (The browser uses ws://localhost:7880 via the backend token instead.)
+      LIVEKIT_URL: ws://livekit:7880
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+      livekit:
+        condition: service_started
     restart: unless-stopped
 
   frontend:
@@ -75,6 +112,25 @@ services:
       - "5173:80" # http://localhost:5173
     depends_on:
       - backend
+
+  # One-shot demo seed (3 Sarnia listings + 1 returning buyer). Reuses the built
+  # backend image and connects to db + neo4j directly. Profile-gated so a bare
+  # `docker compose up` does not run it; `make up` / `make seed` invoke it. Skips
+  # gracefully when OPENAI_API_KEY is unset (Cognee needs it).
+  seed:
+    image: realtyrecall-backend
+    env_file: .env
+    command: ["python", "-m", "src.scripts.seed_demo"]
+    volumes:
+      - cogneedata:/app/.cognee_system
+      - cogneedata_data:/app/.data
+    depends_on:
+      db:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    restart: "no"
+    profiles: ["seed"]
 
 volumes:
   pgdata:

@@ -182,14 +182,33 @@ Cognee is not a logo on the page. It is the system of record: the graph and vect
 
 ## Quick start
 
-Prerequisites: [Docker](https://www.docker.com/), Python 3.11+, Node.js 22+, [uv](https://docs.astral.sh/uv/), [pnpm](https://pnpm.io/).
+Prerequisites: [Docker](https://www.docker.com/) with Compose. For the no-Docker path further down you also need Python 3.11+, Node.js 22+, [uv](https://docs.astral.sh/uv/), and [pnpm](https://pnpm.io/).
+
+### One command
 
 ```bash
-git clone https://github.com/mahimairaja/RealtyRecall.git
-cd RealtyRecall
-cp .env.example .env             # fill in the keys below
-docker compose up -d db neo4j    # Postgres (pgvector) + Neo4j
+git clone https://github.com/mahimairaja/realtyrecall.git
+cd realtyrecall
+make up
 ```
+
+`make up` (or `task up`) creates `.env` from `.env.example`, builds and starts the whole stack (Postgres + pgvector, Neo4j, a bundled LiveKit server, backend, agent, frontend), applies migrations, seeds demo data, and prints the URLs:
+
+- Frontend: `http://localhost:5173`
+- API docs: `http://localhost:8000/docs`
+- Neo4j browser: `http://localhost:7474` (`neo4j` / `neo4jpassword`)
+
+For voice, add `OPENAI_API_KEY` and `DEEPGRAM_API_KEY` to `.env` and run `make up` again. To talk to the agent in your terminal without LiveKit:
+
+```bash
+docker compose run --rm agent uv run python main.py console
+```
+
+Stop with `make down`; `make smoke` checks backend health and the LiveKit port. The bundled browser call uses ICE-over-TCP for reliable local media; on Docker Desktop for macOS it is best-effort, and console mode above is the guaranteed voice path.
+
+### Run without Docker
+
+Prefer running each service on your host? Start the datastores with `docker compose up -d db neo4j`, then:
 
 ### 1. Backend
 

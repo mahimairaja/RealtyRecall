@@ -1,0 +1,17 @@
+# Local-dev LiveKit server for the RealtyRecall docker compose stack.
+#
+# ICE-over-TCP (rtc.tcp_port) is enabled so a browser on the host can reach the
+# containerized server reliably. UDP through Docker NAT is unreliable, especially
+# on Docker Desktop for macOS, so TCP is the dependable fallback.
+#
+# The keys below are development credentials only. Never use them outside local dev.
+port: 7880
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 50020
+  use_external_ip: false
+keys:
+  devkey: secret
+logging:
+  level: info
