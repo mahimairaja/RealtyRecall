@@ -1,12 +1,17 @@
 import asyncio
 import json
 
+import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
 import src.api.endpoints.openorca as oo
 from src.core.graph_token import openorca_tenant
 from src.core.tenant import get_agent_tenant_id
+
+# These stream the live /openorca/events SSE endpoint (an unbounded generator), so they belong
+# with the slow/live suite, not the fast unit gate that CI runs as `pytest -m "not integration"`.
+pytestmark = pytest.mark.integration
 
 
 def _app():
