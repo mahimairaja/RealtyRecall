@@ -192,12 +192,14 @@ class CallContext:
         self.active = active
         if not self.room:
             return
-        self.fire(self._report(active, action, from_agent))
+        self.fire(self._report(self.room, active, action, from_agent))
 
-    async def _report(self, active: str, action: str, from_agent: str | None) -> None:
+    async def _report(
+        self, room: str, active: str, action: str, from_agent: str | None
+    ) -> None:
         try:
             await self.api.report_agent_state(
-                self.room, active=active, action=action, from_agent=from_agent
+                room, active=active, action=action, from_agent=from_agent
             )
         except Exception as exc:  # noqa: BLE001  (graph reporting is best-effort)
             logger.debug("agent-state report failed: %s", exc)
@@ -279,6 +281,7 @@ class CallContext:
             self._log_usage_summary()
         if self.api is not None:
             try:
-                await post_call_log(self.api, self.room, buyer_phone=self.last_phone)
+                if self.room:
+                    await post_call_log(self.api, self.room, buyer_phone=self.last_phone)
             finally:
                 await self.api.aclose()
